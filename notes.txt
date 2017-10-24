@@ -1,0 +1,2 @@
+Get list of WIN markets on UK horse races.
+1 minute before a market closes (starts), place a bet (or lay) on the favourite based on current odds.
