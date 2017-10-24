@@ -9,17 +9,13 @@ from logger import Logger
 from time import time, sleep
 from betfair.api_ng import API
 from datetime import datetime, timedelta
+from pymongo import MongoClient
 
 class BetBot(object):
     def __init__(self):
         self.username = '' # set by run() function at startup
         self.logger = None # set by run() function at startup
         self.api = None # set by run() function at startup
-        self.abs_path = os.path.abspath(os.path.dirname(__file__))
-        self.ignores_path = '%s/ignores.pkl' % self.abs_path
-        self.ignores = self.unpickle_data(self.ignores_path, []) # list of market ids
-        self.betcount_path = '%s/betcount.pkl' % self.abs_path
-        self.betcount = self.unpickle_data(self.betcount_path, {}) # keys = hours, vals = market ids
         self.markets = None # set by refresh_markets()
         self.throttle = {
             'next': time(), # time we can send next request. auto-updated in do_throttle()
@@ -29,21 +25,6 @@ class BetBot(object):
             'refresh_markets': time() # auto-updated in refresh_markets()
         }
         self.session = False
-
-    def pickle_data(self, filepath = '', data = None):
-        """pickle object to file"""
-        f = open(filepath, 'wb')
-        pickle.dump(data, f)
-        f.close()
-
-    def unpickle_data(self, filepath = '', default_object = None):
-        """unpickle file to object. returns object"""
-        if os.path.exists(filepath):
-            f = open(filepath, 'rb')
-            data = pickle.load(f)
-            f.close()
-            return data
-        return default_object # return default object (empty)
 
     def do_throttle(self):
         """return when it's safe to continue"""
@@ -82,40 +63,90 @@ class BetBot(object):
                 msg = 'api.keep_alive() resp = %s' % resp
                 raise Exception(msg)
 
-    def get_markets(self):
-        """returns a list of UK horse racing WIN markets"""
-        params = {
-            'filter': {
-                'eventTypeIds': ['7'],
-                'marketTypeCodes': ['WIN'],
-                'marketBettingTypes': ['ODDS'],
-                'marketCountries': ['GB'],
-                'turnInPlayEnabled': True, # will go in-play
-                'inPlayOnly': False # market NOT currently in-play
-            },
-            'marketProjection': ['EVENT','RUNNER_DESCRIPTION','MARKET_START_TIME'],
-            'maxResults': 1000, # maximum allowed by betfair
-            'sort': 'FIRST_TO_START'
-        }
-        # send the request
-        markets = self.api.get_markets(params)
-        if type(markets) is list:
-            msg = 'Found %s markets...' % len(markets)
-            self.logger.xprint(msg)
-            return markets
-        else:
-            msg = 'api.get_markets() resp = %s' % markets
-            raise Exception(msg)
+    def upsert_market(self, market = None):
+        if market:
+            key = {'marketId': market['marketId']}
+            data = market
+            self.db.markets.update(key, data, upsert = True)
+
+    def upsert_market_book(self, market_book = None):
+        if market_book:
+            key = {'marketId': market_book['marketId']}
+            data = market_book
+            self.db.market_books.update(key, data, upsert = True)
 
     def refresh_markets(self):
         """refresh available markets every 15 minutes"""
         now = time()
         if now > self.throttle['refresh_markets']:
-            markets = self.get_markets()
-            for market_id in self.ignores: # remove markets already bet on
-                self.markets.remove(market_id)
-            self.markets = markets
+            msg = 'Refreshing list of markets.'
+            self.logger.xprint(msg)
+            # define the filter
+            params = {
+                'filter': {
+                    'eventTypeIds': ['7'], # horse racing
+                    'marketTypeCodes': ['WIN'],
+                    'marketBettingTypes': ['ODDS'],
+                    'marketCountries': ['GB'], # UK races
+                    'turnInPlayEnabled': True, # will go in-play
+                    'inPlayOnly': False # market NOT currently in-play
+                },
+                'marketProjection': ['EVENT','RUNNER_DESCRIPTION','MARKET_START_TIME'],
+                'maxResults': 1000, # maximum allowed by betfair
+                'sort': 'FIRST_TO_START' # order so the next race by start time comes first
+            }
+            # send the request
+            markets = self.api.get_markets(params)
+            if type(markets) is list: # upsert into the DB
+                msg = 'Retrieved %s markets.' % len(markets)
+                self.logger.xprint(msg)
+                for market in markets:
+                    self.upsert_market(market)
+            else:
+                msg = 'Failed to retrieve markets: resp = %s' % markets
+                raise Exception(msg)
+            # update throttle to refresh again in 15 minutes
             self.throttle['refresh_markets'] = now + (15 * 60) # add 15 mins
+
+    def set_market_played(self, market = None):
+        """set the provided market as played (i.e. bets have been placed successfully)"""
+        if market:
+            market['played'] = True
+            self.upsert_market(market)
+            
+    def set_market_skipped(self, market = None, errorCode = ''):
+        """set the provided market as skipped (i.e. bets have not been placed successfully)
+           either because the market was in the past when betting was attempted, or
+           an attempt to place bets failed
+        """
+        if market:
+            market['played'] = False
+            if errorCode:
+                market['errorCode'] = errorCode
+            self.upsert_market(market)
+        
+    def next_playable_market(self):
+        """returns the next playable market"""
+        market = None
+        self.logger.xprint("Finding next playable market")
+        cursor = self.db.markets.find({
+            "played": { "$exists": 0 }
+        }).sort([('marketStartTime', 1)]).limit(1)
+        if cursor[0]:
+            market = cursor[0]
+        self.logger.xprint(market)
+        return market
+        
+    def get_market_by_id(self, market_id = ''):
+        msg = 'Finding market by ID: %s' % market_id
+        self.logger.xprint(msg)
+        cursor = self.db.markets.find_one({
+            "marketId": market_id
+        })
+        if cursor[0]:
+            return cursor[0]
+        else:
+            return None
 
     def get_market_book(self, market = None):
         books = self.api.get_market_books([market['marketId']])
@@ -123,14 +154,14 @@ class BetBot(object):
         if type(books) is list:
             return books[0]
         else:
-            msg = 'api.get_market_books() resp = %s' % books
+            msg = 'Failed to get market book: resp = %s' % books
             raise Exception(msg)
 
     def get_favourite(self, market_book = None):
         favourite = None
         bestPrice = float("inf")
         for runner in market_book['runners']:
-            if runner['status'] == 'ACTIVE':
+            if runner['status'] == 'ACTIVE': # the horse has got to be running still!
                 if 'lastPriceTraded' in runner: # sometimes there isn't a lastPriceTraded available
                     if runner['lastPriceTraded'] < bestPrice:
                         favourite = runner
@@ -152,12 +183,6 @@ class BetBot(object):
             new_bet = {}
             new_bet['selectionId'] = runner['selectionId']
             new_bet['side'] = 'BACK' # or could be LAY here
-            # new_bet['orderType'] = 'LIMIT'
-            # new_bet['limitOrder'] = {
-            #    'size': 2.0,
-            #    'price': 1.01,
-            #    'persistenceType': 'LAPSE' # LAPSE at in-play. Set as 'PERSIST' to retain in-play.
-            #}
             new_bet['orderType'] = 'MARKET_ON_CLOSE'
             new_bet['marketOnCloseOrder'] = {
                 'liability': 2.0
@@ -165,63 +190,31 @@ class BetBot(object):
             market_bets[market_id]['bets'].append(new_bet)
         return market_bets
 
-    def update_ignores(self, market_id = ''):
-        """update ignores list"""
-        if market_id:
-            # add market to ignores dict
-            if market_id not in self.ignores:
-                self.ignores.append(market_id)
-                self.markets.remove(market_id)
-                self.pickle_data(self.ignores_path, self.ignores)
-        else:
-            # check for closed markets (once every 2 hours)
-            count = len(self.ignores)
-            now = time()
-            if count > 0 and now > self.throttle['update_closed']:
-                secs = 2 * 60 # 2 minutes
-                self.throttle['update_closed'] = now + secs
-                msg = 'Checking %s markets for closed status.' % count
-                self.logger.xprint(msg)
-                for i in range(0, count, 5):
-                    market_ids = self.ignores[i:i+5] # list of upto 5 market ids
-                    self.do_throttle()
-                    books = self.get_market_books(market_ids)
-                    for book in books:
-                        if book['status'] == 'CLOSED':
-                            # remove from ignores
-                            self.ignores.remove(book['marketId'])
-                            self.pickle_data(self.ignores_path, self.ignores)
-                            # get settled bets
-                            self.logger.xprint("Get settled bets")
-
-    def place_bets(self, market_bets = None):
+    def place_bets(self, market = None, market_bets = None):
         """loop through markets and place bets
         @market_bets: type = dict returned from create_bets()
         """
         for market_id in market_bets:
             bets = market_bets[market_id]['bets']
+            venue = market['event']['venue']
+            name = market['marketName']
             if bets:
                 resp = self.api.place_bets(market_id, bets)
                 if (type(resp) is dict
                     and 'status' in resp
                     ):
                     if resp['status'] == 'SUCCESS':
-                        # add to ignores
-                        self.update_ignores(market_id)
-                        msg = 'PLACE BETS: SUCCESS'
+                        # set the market as played
+                        self.set_market_played(market)
+                        msg = 'Successfully placed bet(s) on %s %s.' % (venue, name)
                         self.logger.xprint(msg)
                     else:
-                        if resp['errorCode'] == 'INSUFFICIENT_FUNDS':
-                            msg = 'PLACE BETS: FAIL (%s)' % resp['errorCode']
-                            self.logger.xprint(msg)
-                            sleep(180) # wait 3 minutes
-                        else:
-                            msg = 'PLACE BETS: FAIL (%s)' % resp['errorCode']
-                            self.logger.xprint(msg, True) # do not raise error - allow bot to continue
-                            # add to ignores
-                            self.update_ignores(market_id)
+                        msg = 'Failed to place bet(s) on %s %s. (Error: %s)' % (venue, name, resp['errorCode'])
+                        self.logger.xprint(msg, True) # do not raise error - allow bot to continue
+                        # set the market as skipped, it's too late to try again
+                        self.set_market_skipped(market, resp['errorCode'])
                 else:
-                    msg = 'PLACE BETS: FAIL\n%s' % resp
+                    msg = 'Failed to place bet(s) on %s %s - resp = %s' % (venue, name, resp)
                     raise Exception(msg)
 
     def run(self, username = '', password = '', app_key = '', aus = False):
@@ -231,38 +224,46 @@ class BetBot(object):
         self.api.app_key = app_key
         self.logger = Logger(aus)
         self.logger.bot_version = __version__
+        # connect to MongoDB
+        client = MongoClient()
+        self.db = client.betbot
+        self.logger.xprint(self.db)
         # login to betfair api-ng
         self.do_login(username, password)
         while self.session:
             self.do_throttle()
             self.keep_alive() # refresh login session (every 15 mins)
-            self.refresh_markets() # refresh available markets (every 15 mins), ordered first to last start time
-            if self.markets:
-                next_market = self.markets[0]
+            self.refresh_markets() # refresh available markets (every 15 mins)
+            next_market = self.next_playable_market()
+            if next_market:
                 name = next_market['marketName']
                 venue = next_market['event']['venue']
                 start_time = dateutil.parser.parse(next_market['marketStartTime'])
-                # self.logger.xprint(next_market)
                 msg = "Next market is the %s %s at %s." % (venue, name, start_time)
                 self.logger.xprint(msg)
                 now = datetime.now(pytz.utc)
                 wait = (start_time - now).total_seconds()
-                # if wait < 60: # process the next market, less than a minute to go before start
-                if wait < float('Inf'): # use this for testing purposes, causes bets to be created immediately
-                    msg = 'Generating bets for %s %s, starting in <1 minute.' % (venue, name)
+                if wait < 0: # "next" market is in the past and can't be played
+                    msg = "Market start is in the past, marking as not played and moving on."
                     self.logger.xprint(msg)
-                    market_bets = self.create_bets(next_market)
-                    self.logger.xprint(market_bets)
-                    if market_bets:
-                        self.place_bets(market_bets)
-                else: # wait until a minute before the next market is due to start
-                    mins, secs = divmod(wait, 60)
-                    msg = "Sleeping until 1 minute before the next market starts."
-                    self.logger.xprint(msg)
-                    time_target = time() + wait - 60
-                    while time() < time_target:
-                        self.keep_alive() # refresh login session (runs every 15 mins)
-                        sleep(0.5) # CPU saver!
+                    self.set_market_skipped(next_market, 'MARKET_IN_PAST')
+                else:
+                    # if wait < 60: # process the next market, less than a minute to go before start
+                    if wait < float('Inf'): # use this for testing purposes, causes bets to be created immediately
+                        msg = 'Generating bets for %s %s, starting in <1 minute.' % (venue, name)
+                        self.logger.xprint(msg)
+                        market_bets = self.create_bets(next_market)
+                        self.logger.xprint(market_bets)
+                        if market_bets:
+                            self.place_bets(next_market, market_bets)
+                    else: # wait until a minute before the next market is due to start
+                        mins, secs = divmod(wait, 60)
+                        msg = "Sleeping until 1 minute before the next market starts."
+                        self.logger.xprint(msg)
+                        time_target = time() + wait - 60
+                        while time() < time_target:
+                            self.keep_alive() # refresh login session (runs every 15 mins)
+                            sleep(0.5) # CPU saver!
             sleep(5)
         if not self.session:
             msg = 'SESSION TIMEOUT'

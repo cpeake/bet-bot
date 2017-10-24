@@ -1,2 +1,7 @@
-Get list of WIN markets on UK horse races.
-1 minute before a market closes (starts), place a bet (or lay) on the favourite based on current odds.
+Lay All
+
+Fibonacci stake plan by day, no stop loss, static stake plan (1.0 fixed weighting starting point)
+
+Bet All
+
+Fibonacci stake plan by race, stop loss at 16x3, reset each day, Fibonacci stake plan weighting by day
