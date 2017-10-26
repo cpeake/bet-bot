@@ -3,9 +3,8 @@ from datetime import datetime
 
 class Logger(object):
     """print info to terminal and save to log file"""
-    def __init__(self, aus = False):
+    def __init__(self):
         self.prefix = '[UK]'
-        if aus: self.prefix = '[AUS]'
         self.abs_path = os.path.abspath(os.path.dirname(__file__))
         self.log_path = self.abs_path + '/log.txt'
         self.err_path = self.abs_path + '/err_log.txt'

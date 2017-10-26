@@ -359,7 +359,7 @@ class API(object):
         else:
             raise Exception(str(resp))
 
-    def place_bets(self, market_id = '', bets = None, customer_ref = '', req_id = 1):
+    def place_bets(self, market_id = '', bets = None, strategy_ref = '', customer_ref = '', req_id = 1):
         """place bets on given market id.
         returns list of bet execution reports.
         @market_id: type = string
@@ -390,6 +390,7 @@ class API(object):
         params['locale'] = self.locale
         params['marketId'] = market_id
         params['instructions'] = bets
+        if strategy_ref: params['customerStrategyRef'] = strategy_ref
         if customer_ref: params['customerRef'] = customer_ref
         req = {
             'jsonrpc': '2.0',
@@ -441,6 +442,45 @@ class API(object):
         resp = self.send_http_request(url, req)
         if type(resp) is dict and 'result' in resp:
             return resp['result']
+        else:
+            raise Exception(str(resp))
+            
+    def get_current_orders(self, bet_ids = [], req_id = 1):
+        url = 'https://api.betfair.com/exchange/betting/json-rpc/v1'
+        params = {}
+        params['locale'] = self.locale
+        params['betIds'] = bet_ids
+        params['includeItemDescription'] = True
+        req = {
+            'jsonrpc': '2.0',
+            'method': 'SportsAPING/v1.0/listCurrentOrders',
+            'id': req_id,
+            'params': params
+        }
+        req = json.dumps(req) # convert dict to json format
+        resp = self.send_http_request(url, req)
+        if type(resp) is dict and 'result' in resp:
+            return resp['result']['currentOrders']
+        else:
+            raise Exception(str(resp))
+    
+    def get_cleared_orders(self, bet_ids = [], req_id = 1):
+        url = 'https://api.betfair.com/exchange/betting/json-rpc/v1'
+        params = {}
+        params['locale'] = self.locale
+        params['betIds'] = bet_ids
+        params['betStatus'] = 'SETTLED' # settled bets only
+        params['includeItemDescription'] = True
+        req = {
+            'jsonrpc': '2.0',
+            'method': 'SportsAPING/v1.0/listClearedOrders',
+            'id': req_id,
+            'params': params
+        }
+        req = json.dumps(req) # convert dict to json format
+        resp = self.send_http_request(url, req)
+        if type(resp) is dict and 'result' in resp:
+            return resp['result']['clearedOrders']
         else:
             raise Exception(str(resp))
 

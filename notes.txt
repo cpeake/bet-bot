@@ -1,7 +1,26 @@
 Lay All
 
-Fibonacci stake plan by day, no stop loss, static stake plan (1.0 fixed weighting starting point)
+Fibonacci stake plan by day, no stop loss, static stake plan weighting (1.0 fixed weighting starting point)
 
 Bet All
 
 Fibonacci stake plan by race, stop loss at 16x3, reset each day, Fibonacci stake plan weighting by day
+
+{
+  'jsonrpc': '2.0',
+  'method': 'SportsAPING/v1.0/placeOrders',
+  'id': 1,
+  'params': {
+    'locale': '',
+    'marketId': '1.135980460',
+    'customerStrategyRef': 'ALS1',
+    'instructions': [
+      {
+        'selectionId': 13564831,
+        'side': 'BET',
+        'orderType': 'MARKET_ON_CLOSE',
+        'marketOnCloseOrder': {'liability': 2.0}
+      }
+    ]  
+  }
+}
