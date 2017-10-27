@@ -7,7 +7,6 @@ import dateutil.parser
 import pytz
 import pymongo
 import logging
-from logger import Logger
 from time import time, sleep
 from betfair.api_ng import API
 from datetime import datetime, timedelta
