@@ -3,7 +3,7 @@ from time import sleep
 import os
 import logging
 import traceback
-from sys import argv, exit
+from sys import exit
 
 # Set up logging
 # TODO: consider logging changes for running on Heroku
@@ -32,9 +32,9 @@ if not APP_KEY:
     print('BETFAIR_APP_KEY is not set, exiting.')
     exit()
 
-EXIT_ON_ERROR = True # set to False when bot is ready to run 24/7
+EXIT_ON_ERROR = True  # set to False when bot is ready to run 24/7
 
-while True: # loop forever
+while True:  # loop forever
     try:
         # Start BetBot
         from betbot_ng import BetBot
@@ -48,5 +48,6 @@ while True: # loop forever
             msg = '%s%s' % (http_err, msg.rpartition(http_err)[2])
         msg = 'BetBot Crashed: %s' % msg
         logger.error(msg)
-        if EXIT_ON_ERROR: exit()
-    sleep(60) # wait for Betfair errors to clear
+        if EXIT_ON_ERROR:
+            exit()
+    sleep(60)  # wait for Betfair errors to clear
