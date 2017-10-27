@@ -1,10 +1,21 @@
 """Betfair Bot Manager"""
 from time import sleep
 import os
+import logging
 import traceback
 from sys import argv, exit
 
-### USER INFO ###
+# Set up logging
+# TODO: consider logging changes for running on Heroku
+logger = logging.getLogger('betbot_application')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+# Retrieve Betfair authentication details from the environment
 USERNAME = os.environ['BETFAIR_USERNAME']
 PASSWORD = os.environ['BETFAIR_PASSWORD']
 APP_KEY = os.environ['BETFAIR_APP_KEY']
@@ -25,21 +36,17 @@ EXIT_ON_ERROR = True # set to False when bot is ready to run 24/7
 
 while True: # loop forever
     try:
+        # Start BetBot
         from betbot_ng import BetBot
-        from logger import Logger
-        log = Logger()
-        log.xprint('Starting Betting Bot')
-        # start bot
+        logger.info('Starting BetBot')
         bot = BetBot()
         bot.run(USERNAME, PASSWORD, APP_KEY)
     except Exception as exc:
-        from logger import Logger
-        log = Logger()
         msg = traceback.format_exc()
         http_err = 'ConnectionError:'
         if http_err in msg:
             msg = '%s%s' % (http_err, msg.rpartition(http_err)[2])
-        msg = 'Bot Crashed: %s' % msg
-        log.xprint(msg, err = True)
+        msg = 'BetBot Crashed: %s' % msg
+        logger.error(msg)
         if EXIT_ON_ERROR: exit()
-    sleep(60) # wait for betfair errors to clear
+    sleep(60) # wait for Betfair errors to clear

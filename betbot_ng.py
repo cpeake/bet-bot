@@ -6,6 +6,7 @@ import settings
 import dateutil.parser
 import pytz
 import pymongo
+import logging
 from logger import Logger
 from time import time, sleep
 from betfair.api_ng import API
@@ -13,10 +14,13 @@ from datetime import datetime, timedelta
 from pymongo import MongoClient
 from slackclient import SlackClient
 
+module_logger = logging.getLogger('betbot_application.betbot_ng')
+
 class BetBot(object):
     def __init__(self):
+        self.logger = logging.getLogger('betbot_application.betbot_ng.BetBot')
+        self.logger.debug('Creating an instance of BetBot')
         self.username = '' # set by run() function at startup
-        self.logger = None # set by run() function at startup
         self.api = None # set by run() function at startup
         self.db = None # set by run() function at startup
         self.sc = None # set by run() function at startup
@@ -149,8 +153,7 @@ class BetBot(object):
         """refresh available markets every 15 minutes"""
         now = time()
         if now > self.throttle['refresh_markets']:
-            msg = 'Refreshing list of markets.'
-            self.logger.xprint(msg)
+            self.logger.info('Refreshing list of markets.')
             # define the filter
             params = {
                 'filter': {
@@ -168,8 +171,7 @@ class BetBot(object):
             # send the request
             markets = self.api.get_markets(params)
             if type(markets) is list: # upsert into the DB
-                msg = 'Retrieved %s markets.' % len(markets)
-                self.logger.xprint(msg)
+                self.logger.info('Retrieved %s markets.' % len(markets))
                 for market in markets:
                     self.upsert_market(market)
             else:
@@ -188,23 +190,20 @@ class BetBot(object):
     def set_instructions_settled(self, cleared_orders = []):
         for order in cleared_orders:
             bet_id = order['betId']
-            msg = 'Marking instruction %s as settled.' % bet_id
-            self.logger.xprint(msg)
+            self.logger.info('Marking instruction %s as settled.' % bet_id)
             instruction = self.get_instruction(bet_id)
             if instruction:
                 instruction['settled'] = True
                 self.upsert_instruction(instruction)
             else:
-                msg = 'Instruction with betId %s not found.' & bet_id
-                self.logger.xprint(msg)
+                self.logger.warning('Instruction with betId %s not found.' & bet_id)
 
     def update_orders(self):
         now = time()
         if now > self.throttle['update_orders']:
             active_instructions = self.get_active_instructions()
             if active_instructions:
-                msg = 'Updating order(s) on %s active instruction(s).' % len(active_instructions)
-                self.logger.xprint(msg)
+                self.logger.info('Updating order(s) on %s active instruction(s).' % len(active_instructions))
                 bet_ids = []
                 for bet in active_instructions:
                     bet_ids.append(bet['betId'])
@@ -244,8 +243,7 @@ class BetBot(object):
         return market
         
     def get_market_by_id(self, market_id = ''):
-        msg = 'Retrieving market with ID %s' % market_id
-        self.logger.xprint(msg)
+        self.logger.info('Retrieving market with ID %s' % market_id)
         cursor = self.db.markets.find_one({
             "marketId": market_id
         })
@@ -388,7 +386,6 @@ class BetBot(object):
         if strategy_bets:
             for strategy_ref in strategy_bets:
                 market_bets = strategy_bets[strategy_ref]
-                self.logger.xprint(market_bets)
                 resp = self.api.place_bets(market['marketId'], market_bets, strategy_ref)
                 if (type(resp) is dict
                     and 'status' in resp
@@ -398,11 +395,9 @@ class BetBot(object):
                         self.set_market_played(market)
                         # persist the bet execution reports in the DB
                         self.insert_instructions(market, resp['instructionReports'])
-                        msg = 'Successfully placed bet(s) on %s %s.' % (venue, name)
-                        self.logger.xprint(msg)
+                        self.logger.info('Successfully placed bet(s) on %s %s.' % (venue, name))
                     else:
-                        msg = 'Failed to place bet(s) on %s %s. (Error: %s)' % (venue, name, resp['errorCode'])
-                        self.logger.xprint(msg, True) # do not raise error - allow bot to continue
+                        self.logger.error('Failed to place bet(s) on %s %s. (Error: %s)' % (venue, name, resp['errorCode']))
                         # set the market as skipped, it's too late to try again
                         self.set_market_skipped(market, resp['errorCode'])
                 else:
@@ -422,12 +417,10 @@ class BetBot(object):
         self.username = username
         self.api = API(False, ssl_prefix = username) # connect to the UK (rather than AUS) API
         self.api.app_key = app_key
-        self.logger = Logger()
-        self.logger.bot_version = __version__
         # connect to MongoDB
         client = MongoClient()
         self.db = client.betbot
-        self.logger.xprint(self.db)
+        self.logger.info('Connected to MongoDB: %s' % self.db)
         # login to Betfair api-ng
         self.do_login(username, password)
         # login to Slack        
@@ -443,13 +436,12 @@ class BetBot(object):
                 name = next_market['marketName']
                 venue = next_market['event']['venue']
                 start_time = next_market['marketStartTime']
-                msg = "Next market is the %s %s at %s." % (venue, name, start_time)
-                self.logger.xprint(msg)
+                self.logger.info('Next market is the %s %s at %s.' % (venue, name, start_time))
                 now = datetime.utcnow()
                 wait = (start_time - now).total_seconds()
                 if wait < 0: # "next" market is in the past and can't be played
                     msg = "%s %s has already started, skipping." % (venue, name)
-                    self.logger.xprint(msg)
+                    self.logger.warn(msg)
                     self.set_market_skipped(next_market, 'MARKET_IN_PAST')
                 else:
                     if wait < 60: # process the next market, less than a minute to go before start
@@ -457,14 +449,12 @@ class BetBot(object):
                         strategy_bets = {}
                         # strategy_bets['ALS1'] = self.create_lay_all_bets(next_market)
                         strategy_bets['ABS1'] = self.create_bet_all_bets(next_market)
-                        msg = 'Generated bets on %s %s.\n%s' % (venue, name, strategy_bets)
-                        self.logger.xprint(msg)
-                        if strategy_bets:
-                            self.place_bets(next_market, strategy_bets)
+                        self.logger.info('Generated bets on %s %s.\n%s' % (venue, name, strategy_bets))
+                        #if strategy_bets:
+                        #    self.place_bets(next_market, strategy_bets)
                     else: # wait until a minute before the next market is due to start
                         mins, secs = divmod(wait, 60)
-                        msg = "Sleeping until 1 minute before %s %s starts." % (venue, name)
-                        self.logger.xprint(msg)
+                        self.logger.info("Sleeping until 1 minute before %s %s starts." % (venue, name))
                         time_target = time() + wait - 60
                         while time() < time_target:
                             self.keep_alive() # refresh login session (runs every 15 mins)
