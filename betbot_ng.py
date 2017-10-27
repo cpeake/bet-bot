@@ -18,6 +18,8 @@ class BetBot(object):
         self.username = '' # set by run() function at startup
         self.logger = None # set by run() function at startup
         self.api = None # set by run() function at startup
+        self.db = None # set by run() function at startup
+        self.sc = None # set by run() function at startup
         self.throttle = {
             'next': time(), # time we can send next request. auto-updated in do_throttle()
             'wait': 1.0, # time in seconds between requests
@@ -26,6 +28,14 @@ class BetBot(object):
             'refresh_markets': time() # auto-updated in refresh_markets()
         }
         self.session = False
+
+    def get_strategy_state(self, strategy_ref = ''):
+        return db.strategy_states.find_one({'strategyRef': strategy_ref})
+        
+    def upsert_strategy_state(self, strategy_state = None):
+        if strategy_state:
+            key = {'strategyRef': strategy_state['strategyRef']}
+            self.db.strategy_states.update(key, strategy_state, upsert = True)
 
     def get_stake_by_ladder_position(self, position = 0):
         return settings.stake_ladder[position] * minimum_stake * settings.stake_multiplier
@@ -318,12 +328,26 @@ class BetBot(object):
             return True
 
     def create_lay_all_bets(self, market = None):
-        strategy_bets = []
-        #if market:
         # if this is the first day of trading or the strategy generated a profit on the previous day,
-        # place a lay bet at minimum liability in the Fibonacci sequence, else place a lay bet with
-        # liability at the next number in the Fibonnaci sequence
+        # place a lay bet at minimum stake (converted to liability) in the stake ladder, else place a lay bet with
+        # the next stake (converted to liability) in the stake ladder.
+        strategy_bets = []
         if market:
+            # work out current state of strategy
+            strategy_state = self.get_strategy_state('ALS1')
+            if not strategy_state: # if there isn't a strategy state, intialise one
+                strategy_state = {'strategy_ref': 'ALS1', 'stake_ladder_position': 0, 'updatedDate': datetime.utcnow()}
+                upsert_strategy_state((strategy_state))
+            else:
+                # recalculate new strategy state if not already done so today
+                now = datetime.utcnow()
+                today_sod = datetime(now.year, now.month, now.day, 0, 0)
+                if strategy_state['updatedDate'] < today_sod and not strategy_won_yesterday('ALS1'):
+                    # increment the stake ladder position if possible
+                    if strategy_state['stake_ladder_position'] < (len(settings.stake_ladder) - 1):
+                        strategy_state['stake_ladder_position'] += 1
+                        upsert_strategy_state(strategy_state)
+            stake = get_stake_by_ladder_position(strategy_state['stake_ladder_position'])
             book = self.get_market_book(market)
             self.insert_market_book(book)
             runner = self.get_favourite(book)

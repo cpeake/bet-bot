@@ -1,10 +1,10 @@
 Lay All
 
-Fibonacci stake plan by day, no stop loss, static stake plan weighting (1.0 fixed weighting starting point)
+Stake ladder by day (increment on previous day loss), no strategy stop loss, static stake plan weighting.
 
 Bet All
 
-Fibonacci stake plan by race, stop loss at 16x3, reset each day, Fibonacci stake plan weighting by day
+Stake ladder by race (increment on loss, reset each day), strategy stop loss at 16x3, stake ladder weighting by day
 
 {
   'jsonrpc': '2.0',
