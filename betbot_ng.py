@@ -392,22 +392,26 @@ class BetBot(object):
         if strategy_bets:
             for strategy_ref in strategy_bets:
                 market_bets = strategy_bets[strategy_ref]
-                resp = self.api.place_bets(market['marketId'], market_bets, strategy_ref)
-                if type(resp) is dict and 'status' in resp:
-                    if resp['status'] == 'SUCCESS':
-                        # set the market as played
-                        self.set_market_played(market)
-                        # persist the bet execution reports in the DB
-                        self.insert_instructions(market, resp['instructionReports'])
-                        self.logger.info('Successfully placed bet(s) on %s %s.' % (venue, name))
+                if not self.sim_mode:
+                    resp = self.api.place_bets(market['marketId'], market_bets, strategy_ref)
+                    if type(resp) is dict and 'status' in resp:
+                        if resp['status'] == 'SUCCESS':
+                            # set the market as played
+                            self.set_market_played(market)
+                            # persist the bet execution reports in the DB
+                            self.insert_instructions(market, resp['instructionReports'])
+                            self.logger.info('Successfully placed bet(s) on %s %s.' % (venue, name))
+                        else:
+                            self.logger.error(
+                                'Failed to place bet(s) on %s %s. (Error: %s)' % (venue, name, resp['errorCode']))
+                            # set the market as skipped, it's too late to try again
+                            self.set_market_skipped(market, resp['errorCode'])
                     else:
-                        self.logger.error(
-                            'Failed to place bet(s) on %s %s. (Error: %s)' % (venue, name, resp['errorCode']))
-                        # set the market as skipped, it's too late to try again
-                        self.set_market_skipped(market, resp['errorCode'])
-                else:
-                    msg = 'Failed to place bet(s) on %s %s - resp = %s' % (venue, name, resp)
-                    raise Exception(msg)
+                        msg = 'Failed to place bet(s) on %s %s - resp = %s' % (venue, name, resp)
+                        raise Exception(msg)
+                else:  # in simulation mode, just set the market as played
+                    self.set_market_played(market)
+                    self.logger.debug('SIMULATED placing bet(s) on %s %s.' % (venue, name))
 
     def post_slack_message(self, msg=''):
         if msg:
@@ -417,11 +421,12 @@ class BetBot(object):
                 text=msg
             )
 
-    def run(self, username='', password='', app_key=''):
+    def run(self, username='', password='', app_key='', sim_mode=False):
         # create the API object
         self.username = username
         self.api = API(False, ssl_prefix=username)  # connect to the UK (rather than AUS) API
         self.api.app_key = app_key
+        self.sim_mode = sim_mode
         # connect to MongoDB
         client = MongoClient()
         self.db = client.betbot

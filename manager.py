@@ -34,13 +34,16 @@ if not APP_KEY:
 
 EXIT_ON_ERROR = True  # set to False when bot is ready to run 24/7
 
+# Are we just simulating bets?
+if '--simulate' in argv: SIM = True
+
 while True:  # loop forever
     try:
         # Start BetBot
         from betbot_ng import BetBot
         logger.info('Starting BetBot')
         bot = BetBot()
-        bot.run(USERNAME, PASSWORD, APP_KEY)
+        bot.run(USERNAME, PASSWORD, APP_KEY, SIM)
     except Exception as exc:
         msg = traceback.format_exc()
         http_err = 'ConnectionError:'
