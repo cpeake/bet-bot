@@ -58,7 +58,7 @@ class BetBot(object):
         return
 
     def do_login(self, username='', password=''):
-        """login to betfair & set session status"""
+        """login to Betfair & set session status"""
         self.session = False
         resp = self.api.login(username, password)
         if resp == 'SUCCESS':
