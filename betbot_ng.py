@@ -23,6 +23,7 @@ class BetBot(object):
         self.db = None  # set by run() function at startup
         self.sc = None  # set by run() function at startup
         self.sim_mode = False  # set by run() function at startup
+        self.slack_channel = os.environ['SLACK_CHANNEL']
         self.throttle = {
             'next': time(),  # time we can send next request. auto-updated in do_throttle()
             'wait': 1.0,  # time in seconds between requests
@@ -418,7 +419,7 @@ class BetBot(object):
         if msg:
             self.sc.api_call(
                 "chat.postMessage",
-                channel="#dev-bot",
+                channel=self.slack_channel,
                 text=msg
             )
 
