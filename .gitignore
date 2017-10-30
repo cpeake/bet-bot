@@ -1,7 +1,6 @@
 # Project-specific files
 *.pkl
 betfair/__pycache__
-betfair/ssl_certs/*
 err_log.txt
 log.txt
 
