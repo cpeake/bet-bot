@@ -6,7 +6,6 @@ import traceback
 from sys import exit, argv
 
 # Set up logging
-# TODO: consider logging changes for running on Heroku
 logger = logging.getLogger('betbot_application')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
