@@ -409,7 +409,7 @@ class BetBot(object):
                     else:
                         msg = 'Failed to place bet(s) on %s %s - resp = %s' % (venue, name, resp)
                         raise Exception(msg)
-                else:  # in simulation mode, just set the market as played
+                else:  # in simulation mode, just set the market as played without placing bets
                     self.set_market_played(market)
                     self.logger.debug('SIMULATED placing bet(s) on %s %s.' % (venue, name))
 
@@ -455,12 +455,11 @@ class BetBot(object):
                     self.set_market_skipped(next_market, 'MARKET_IN_PAST')
                 else:
                     if wait < 60:  # process the next market, less than a minute to go before start
-                        # if wait < float('Inf'): # use this for testing purposes, causes bets to be created immediately
-                        strategy_bets = {'ABS1': self.create_bet_all_bets(next_market)}
-                        # strategy_bets['ALS1'] = self.create_lay_all_bets(next_market)
+                        strategy_bets = {'ABS1': self.create_bet_all_bets(next_market),
+                                         'ALS1': self.create_lay_all_bets(next_market)}
                         self.logger.info('Generated bets on %s %s.\n%s' % (venue, name, strategy_bets))
-                        # if strategy_bets:
-                        #    self.place_bets(next_market, strategy_bets)
+                        if strategy_bets:
+                            self.place_bets(next_market, strategy_bets)
                     else:  # wait until a minute before the next market is due to start
                         self.logger.info("Sleeping until 1 minute before %s %s starts." % (venue, name))
                         time_target = time() + wait - 60
