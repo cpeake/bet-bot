@@ -3,7 +3,7 @@ from time import sleep
 import os
 import logging
 import traceback
-from sys import exit
+from sys import exit, argv
 
 # Set up logging
 # TODO: consider logging changes for running on Heroku
@@ -35,7 +35,9 @@ if not APP_KEY:
 EXIT_ON_ERROR = True  # set to False when bot is ready to run 24/7
 
 # Are we just simulating bets?
-if '--simulate' in argv: SIM = True
+SIM = False
+if '--simulate' in argv:
+    SIM = True
 
 while True:  # loop forever
     try:
