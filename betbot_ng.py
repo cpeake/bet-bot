@@ -430,7 +430,7 @@ class BetBot(object):
         self.sim_mode = sim_mode
         # connect to MongoDB
         client = MongoClient(mongodb_uri)
-        self.db = client.betbot
+        self.db = client.get_database()
         self.logger.info('Connected to MongoDB: %s' % self.db)
         # login to Betfair api-ng
         self.do_login(username, password)
