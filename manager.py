@@ -19,6 +19,7 @@ logger.addHandler(ch)
 USERNAME = os.environ['BETFAIR_USERNAME']
 PASSWORD = os.environ['BETFAIR_PASSWORD']
 APP_KEY = os.environ['BETFAIR_APP_KEY']
+MONGODB_URI = os.environ['MONGODB_URI']
 
 if not USERNAME:
     print('BETFAIR_USERNAME is not set, exiting.')
@@ -30,6 +31,10 @@ if not PASSWORD:
     
 if not APP_KEY:
     print('BETFAIR_APP_KEY is not set, exiting.')
+    exit()
+
+if not MONGODB_URI:
+    print('MONGODB_URI is not set, exiting.')
     exit()
 
 EXIT_ON_ERROR = True  # set to False when bot is ready to run 24/7
@@ -45,7 +50,7 @@ while True:  # loop forever
         from betbot_ng import BetBot
         logger.info('Starting BetBot')
         bot = BetBot()
-        bot.run(USERNAME, PASSWORD, APP_KEY, SIM)
+        bot.run(USERNAME, PASSWORD, APP_KEY, MONGODB_URI, SIM)
     except Exception as exc:
         msg = traceback.format_exc()
         http_err = 'ConnectionError:'

@@ -22,6 +22,7 @@ class BetBot(object):
         self.api = None  # set by run() function at startup
         self.db = None  # set by run() function at startup
         self.sc = None  # set by run() function at startup
+        self.sim_mode = False  # set by run() function at startup
         self.throttle = {
             'next': time(),  # time we can send next request. auto-updated in do_throttle()
             'wait': 1.0,  # time in seconds between requests
@@ -421,14 +422,14 @@ class BetBot(object):
                 text=msg
             )
 
-    def run(self, username='', password='', app_key='', sim_mode=False):
+    def run(self, username='', password='', app_key='', mongodb_uri='', sim_mode=False):
         # create the API object
         self.username = username
         self.api = API(False, ssl_prefix=username)  # connect to the UK (rather than AUS) API
         self.api.app_key = app_key
         self.sim_mode = sim_mode
         # connect to MongoDB
-        client = MongoClient()
+        client = MongoClient(mongodb_uri)
         self.db = client.betbot
         self.logger.info('Connected to MongoDB: %s' % self.db)
         # login to Betfair api-ng
