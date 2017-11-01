@@ -8,3 +8,6 @@ minimum_stake = 2.0
 
 # Increment ladder for scaling up bet stakes
 stake_ladder = [1.0, 1.0, 2.0, 4.0, 8.0, 16.0]
+
+# Increment ladder for scaling up bet weights
+weight_ladder = [1.0, 1.0, 2.0, 4.0, 8.0, 16.0]

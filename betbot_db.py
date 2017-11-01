@@ -1,0 +1,240 @@
+import os
+import logging
+import dateutil.parser
+import pymongo
+from datetime import datetime, timedelta
+from pymongo import MongoClient
+
+module_logger = logging.getLogger('betbot_application.betbot_db')
+
+# connect to MongoDB
+MONGODB_URI = os.environ['MONGODB_URI']
+
+if not MONGODB_URI:
+    print('MONGODB_URI is not set, exiting.')
+    exit()
+
+db = MongoClient(os.environ['MONGODB_URI']).get_database()
+module_logger.info('Connected to MongoDB: %s' % db)
+
+
+class MarketRepository(object):
+    def __init__(self, mock_db=None):
+        self.logger = logging.getLogger('betbot_application.betbot_db.MarketRepository')
+        if db:  # inject a mock database for unit testing
+            self.db = mock_db
+        else:
+            self.db = db
+
+    def get_by_id(self, market_id=''):
+        self.logger.debug('Retrieving market %s' % market_id)
+        return self.db.markets.find_one({
+            "marketId": market_id
+        })
+
+    def upsert(self, market=None):
+        if market:
+            self.logger.debug('Upserting market %s' % market['marketId'])
+            # convert datetime strings to proper date times for storing as ISODate
+            market_start_time = market['marketStartTime']
+            open_date = market['event']['openDate']
+            if market_start_time and type(market_start_time) is str:
+                market['marketStartTime'] = dateutil.parser.parse(market_start_time)
+            if open_date and type(open_date) is str:
+                market['event']['openDate'] = dateutil.parser.parse(open_date)
+            key = {'marketId': market['marketId']}
+            self.db.markets.update(key, market, upsert=True)
+        else:
+            msg = 'Failed to upsert a market, None provided.'
+            raise Exception(msg)
+
+    def set_played(self, market=None):
+        """set the provided market as played (i.e. bets have been placed successfully)"""
+        if market:
+            market['played'] = True
+            self.upsert(market)
+        else:
+            msg = 'Failed to set a market as played, None provided.'
+            raise Exception(msg)
+
+    def set_skipped(self, market=None, error_code=''):
+        """set the provided market as skipped (i.e. bets have not been placed successfully)
+           either because the market was in the past when betting was attempted, or
+           an attempt to place bets failed
+        """
+        if market:
+            market['played'] = False
+            if error_code:
+                market['errorCode'] = error_code
+            self.upsert(market)
+        else:
+            msg = 'Failed to set a market as played, None provided.'
+            raise Exception(msg)
+
+    def get_next_playable(self):
+        """returns the next playable market"""
+        self.logger.debug('Finding next playable market.')
+        return self.db.markets.find({
+            "played": {"$exists": 0}
+        }).sort([('marketStartTime', 1)]).next()
+
+
+class MarketBookRepository(object):
+    def __init__(self, mock_db=None):
+        self.logger = logging.getLogger('betbot_application.betbot_db.MarketBookRepository')
+        if db:  # inject a mock database for unit testing
+            self.db = mock_db
+        else:
+            self.db = db
+
+    def insert(self, market_book=None):
+        if market_book:
+            # convert datetime strings to proper date times for storing as ISODate
+            last_match_time = market_book['lastMatchTime']
+            if last_match_time and type(last_match_time) is str:
+                market_book['lastMatchTime'] = dateutil.parser.parse(last_match_time)
+            # add a snapshot datetime
+            market_book['snapshotTime'] = datetime.utcnow()
+            self.db.market_books.insert_one(market_book)
+        else:
+            msg = 'Failed to insert a market book, None provided.'
+            raise Exception(msg)
+
+
+class InstructionRepository(object):
+    def __init__(self, mock_db=None):
+        self.logger = logging.getLogger('betbot_application.betbot_db.InstructionRepository')
+        if db:  # inject a mock database for unit testing
+            self.db = mock_db
+        else:
+            self.db = db
+
+    def get_by_id(self, bet_id=''):
+        self.logger.debug('Retrieving instruction %s' % bet_id)
+        return self.db.instructions.find_one({'betId': bet_id})
+
+    def insert(self, market=None, instruction=None):
+        if market and instruction:
+            market_id = market['marketId']
+            # convert datetime string to proper datetime for storing as ISODate
+            placed_date = instruction['placedDate']
+            if placed_date and type(placed_date) is str:
+                instruction['placedDate'] = dateutil.parser.parse(placed_date)
+            instruction['marketId'] = market_id
+            instruction['settled'] = False
+            self.db.instructions.insert_one(instruction)
+        else:
+            msg = 'Failed to insert an instruction, None provided.'
+            raise Exception(msg)
+
+    def upsert(self, instruction=None):
+        if instruction:
+            # convert datetime string to proper datetime for storing as ISODate
+            placed_date = instruction['placedDate']
+            if placed_date and type(placed_date) is str:
+                instruction['placedDate'] = dateutil.parser.parse(placed_date)
+            key = {'betId': instruction['betId']}
+            self.db.instructions.update(key, instruction, upsert=True)
+
+    def get_active(self):
+        """returns instructions not marked as settled"""
+        bets = []
+        for bet in self.db.instructions.find({"settled": False}):
+            bets.append(bet)
+        self.logger.debug('Found %s active instructions' % len(bets))
+        return bets
+
+    def set_settled(self, cleared_orders=None):
+        if cleared_orders is None:
+            cleared_orders = []
+        for order in cleared_orders:
+            bet_id = order['betId']
+            self.logger.info('Marking instruction %s as settled.' % bet_id)
+            instruction = self.get_by_id(bet_id)
+            if instruction:
+                instruction['settled'] = True
+                self.upsert(instruction)
+            else:
+                msg = 'Instruction %s not found.' % bet_id
+                raise Exception(msg)
+
+
+class OrderRepository(object):
+    def __init__(self, mock_db=None):
+        self.logger = logging.getLogger('betbot_application.betbot_db.OrderRepository')
+        if db:  # inject a mock database for unit testing
+            self.db = mock_db
+        else:
+            self.db = db
+
+    def upsert(self, order_list=None):
+        if order_list is None:
+            order_list = []
+        for order in order_list:
+            self.logger.debug('Upserting %s orders' % len(order_list))
+            # convert date strings to datetimes (ISODates in MongoDB)
+            placed_date = order['placedDate']
+            market_start_time = order['itemDescription']['marketStartTime']
+            settled_date = order['settledDate']
+            last_matched_date = order['lastMatchedDate']
+            if placed_date and type(placed_date) is str:
+                order['placedDate'] = dateutil.parser.parse(placed_date)
+            if market_start_time and type(placed_date) is str:
+                order['itemDescription']['marketStartTime'] = dateutil.parser.parse(market_start_time)
+            if settled_date and type(settled_date) is str:
+                order['settledDate'] = dateutil.parser.parse(settled_date)
+            if last_matched_date and type(last_matched_date) is str:
+                order['lastMatchedDate'] = dateutil.parser.parse(last_matched_date)
+            key = {'betId': order['betId']}
+            self.db.orders.update(key, order, upsert=True)
+
+    def get_settled_yesterday_by_strategy(self, strategy_ref=''):
+        now = datetime.utcnow()
+        today_sod = datetime(now.year, now.month, now.day, 0, 0)
+        yesterday_sod = today_sod - timedelta(days=1)
+        return list(self.db.orders.find({
+            "profit": {"$exists": True},
+            "customerStrategyRef": strategy_ref,
+            "settledDate": {'$gte': yesterday_sod, '$lt': today_sod}
+        }))
+
+    def get_latest_settled_by_strategy(self, strategy_ref=''):
+        return self.db.orders.find({
+            "profit": {"$exists": True},
+            "customerStrategyRef": strategy_ref
+        }).sort('settledDate', pymongo.DESCENDING).limit(1).next()
+
+    def get_latest_settled_today_by_strategy(self, strategy_ref):
+        now = datetime.utcnow()
+        today_sod = datetime(now.year, now.month, now.day, 0, 0)
+        today_eod = datetime(now.year, now.month, now.day, 23, 59)
+        return self.db.orders.find({
+            "profit": {"$exists": True},
+            "customerStrategyRef": strategy_ref,
+            "settledDate": {'$gte': today_sod, '$lt': today_eod}
+        }).sort('settledDate', pymongo.DESCENDING).limit(1).next()
+
+
+class StrategyRepository(object):
+    def __init__(self, mock_db=None):
+        self.logger = logging.getLogger('betbot_application.betbot_db.StrategyRepository')
+        if db:  # inject a mock database for unit testing
+            self.db = mock_db
+        else:
+            self.db = db
+
+    def get_by_reference(self, strategy_ref=''):
+        self.logger.debug('Getting strategy with reference %s' % strategy_ref)
+        return self.db.strategies.find_one({'strategyRef': strategy_ref})
+
+    def upsert(self, strategy_state=None):
+        if strategy_state:
+            key = {'strategyRef': strategy_state['strategyRef']}
+            self.db.strategies.update(key, strategy_state, upsert=True)
+
+
+markets = MarketRepository()
+market_books = MarketBookRepository()
+instructions = InstructionRepository()
+orders = OrderRepository()
+strategies = StrategyRepository()
