@@ -4,6 +4,7 @@ import logging
 import traceback
 from sys import exit
 from time import sleep
+from betbot_ng import BetBot
 
 # Set up logging
 logger = logging.getLogger('betbot_application')
@@ -36,7 +37,6 @@ EXIT_ON_ERROR = True  # set to False when bot is ready to run 24/7
 while True:  # loop forever
     try:
         # Start BetBot
-        from betbot_ng import BetBot
         logger.info('Starting BetBot')
         bot = BetBot()
         bot.run(USERNAME, PASSWORD, APP_KEY)

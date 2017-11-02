@@ -1,23 +1,19 @@
 import settings
 import betbot_db
+from datetime import datetime
 
 
 def get_stake_by_ladder_position(position=0):
     return settings.stake_ladder[position] * settings.minimum_stake * settings.stake_multiplier
 
 
+def get_weight_by_ladder_position(position=0):
+    return settings.weight_ladder[position]
+
+
 def get_lay_liability(stake=0.0, price=0.0):
     """get the lay liability based on the provided stake and price"""
     return stake * (price - 1.0)
-
-
-def get_market_book(self, market=None):
-    books = self.api.get_market_books([market['marketId']])
-    if type(books) is list:
-        return books[0]
-    else:
-        msg = 'Failed to get market book: resp = %s' % books
-        raise Exception(msg)
 
 
 def strategy_won_yesterday(strategy_ref=''):
@@ -68,3 +64,8 @@ def get_favourite(market_book=None):
                     favourite = runner
                     best_price = runner['lastPriceTraded']
     return favourite
+
+
+def get_start_of_day():
+    now = datetime.utcnow()
+    return datetime(now.year, now.month, now.day, 0, 0)

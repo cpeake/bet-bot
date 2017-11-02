@@ -15,7 +15,6 @@ module_logger = logging.getLogger('betbot_application.betbot_ng')
 class BetBot(object):
     def __init__(self):
         self.logger = logging.getLogger('betbot_application.betbot_ng.BetBot')
-        self.logger.debug('Creating an instance of BetBot')
         self.username = ''  # set by run() function at startup
         self.api = None  # set by run() function at startup
         self.sc = None  # set by run() function at startup
@@ -28,10 +27,8 @@ class BetBot(object):
             'update_orders': time(),  # auto-updated in update_orders()
             'refresh_markets': time()  # auto-updated in refresh_markets()
         }
-        self.strategies = [
-            {'ABS1': strategies.BetAllStrategy()},
-            {'ALS1': strategies.LayAllStrategy()}
-        ]
+        self.bet_all_strategy = strategies.BetAllStrategy()
+        self.lay_all_strategy = strategies.LayAllStrategy()
         self.session = False
 
     def do_throttle(self):
@@ -119,10 +116,20 @@ class BetBot(object):
             # update throttle to refresh again in 1 minutes
             self.throttle['update_orders'] = now + 60  # add 1 min
 
+    def get_market_book(self, market=None):
+        books = self.api.get_market_books([market['marketId']])
+        if type(books) is list:
+            betbot_db.market_books.insert(books[0])
+            return books[0]
+        else:
+            msg = 'Failed to get market book: resp = %s' % books
+            raise Exception(msg)
+
     def create_bets(self, market=None):
+        market_book = self.get_market_book(market)
         return {
-            'ABS1': self.create_bet_all_bets(market),
-            'ALS1': self.create_lay_all_bets(market)
+            self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
+            self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
         }
 
     def place_bets(self, market=None, market_bets=None):
@@ -159,12 +166,12 @@ class BetBot(object):
             )
 
     def run(self, username='', password='', app_key=''):
-        # create the API object and login
+        # Create the API object and login
         self.username = username
         self.api = API(False, ssl_prefix=username)  # connect to the UK (rather than AUS) API
         self.api.app_key = app_key
         self.do_login(username, password)
-        # login to Slack        
+        # login to Slack
         self.sc = SlackClient(os.environ["SLACK_API_TOKEN"])
         self.post_slack_message('BetBot has started! :tada:')
         while self.session:
@@ -189,7 +196,8 @@ class BetBot(object):
                         strategy_bets = self.create_bets(next_market)
                         if strategy_bets:
                             self.logger.info('Generated bets on %s %s.\n%s' % (venue, name, strategy_bets))
-                            self.place_bets(next_market, strategy_bets)
+                            # self.place_bets(next_market, strategy_bets)
+                            betbot_db.markets.set_skipped(next_market, 'SIMULATION_MODE')  # comment when live
                         else:
                             self.logger.info('No bets generated on %s %s, skipping.')
                             betbot_db.markets.set_skipped(next_market, 'NO_BETS_CREATED')

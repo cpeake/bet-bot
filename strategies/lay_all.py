@@ -1,6 +1,8 @@
-import datetime
 import logging
 import betbot_db
+import settings
+from datetime import datetime
+from strategies import helpers
 
 
 class LayAllStrategy(object):
@@ -14,48 +16,52 @@ class LayAllStrategy(object):
         self.state = betbot_db.strategies.get_by_reference(self.reference)
         if not self.state:  # no state available, create an initial state
             self.state = betbot_db.strategies.upsert({
-                'strategy_ref': 'ALS1',
+                'strategyRef': 'ALS1',
                 'name': 'All Lay Strategy',
-                'weight_ladder_position': 0,
+                'weightLadderPosition': 0,
+                'daysAtMaxWeight': 0,
+                'active': True,
                 'updatedDate': datetime.utcnow()
             })
 
+    # Updates the state of the strategy prior to the next (or first) bet being placed.
+    # Once a day: If this is the first day of trading or the strategy generated a profit on the previous day,
+    #             reset stake weighting to the start of the ladder and days at maximum weight to 0.
+    #             If the strategy generated a loss on the previous day, increment the weight ladder position
+    #             by 1 if not already at the maximum weight.
+    #             If the weight ladder position was already at the maximum weight , increment days at maximum
+    #             weight by 1.
     def update_state(self):
-        if self.state['updatedDate']
-
-    def create_bets(self, market=None, market_book=None):
-        # if this is the first day of trading or the strategy generated a profit on the previous day,
-        # place a lay bet at minimum stake (converted to liability) in the stake ladder, else place a lay bet with
-        # the next stake (converted to liability) in the stake ladder.
-        bets = []
-        if market:
-            # work out current state of strategy
-            strategy_state = self.get_strategy_state('ALS1')
-            if not strategy_state:  # if there isn't a strategy state, intialise one
-                strategy_state = {'strategy_ref': 'ALS1', 'stake_ladder_position': 0, 'updatedDate': datetime.utcnow()}
-                self.upsert_strategy_state(strategy_state)
+        if self.state['updatedDate'] < helpers.get_start_of_day():
+            if helpers.strategy_won_yesterday(self.reference):
+                self.state['weightLadderPosition'] = 0
+                self.state['daysAtMaxWeight'] = 0
+                betbot_db.strategies.upsert(self.state)
             else:
-                # recalculate new strategy state if not already done so today
-                now = datetime.utcnow()
-                today_sod = datetime(now.year, now.month, now.day, 0, 0)
-                if strategy_state['updatedDate'] < today_sod and not self.strategy_won_yesterday('ALS1'):
-                    # increment the stake ladder position if possible
-                    if strategy_state['stake_ladder_position'] < (len(settings.stake_ladder) - 1):
-                        strategy_state['stake_ladder_position'] += 1
-                        self.upsert_strategy_state(strategy_state)
-            stake = self.get_stake_by_ladder_position(strategy_state['stake_ladder_position'])
-            book = self.get_market_book(market)
-            betbot_db.market_books.insert(book)
-            runner = self.get_favourite(book)
+                if self.state['weightLadderPosition'] < (len(settings.stake_ladder) - 1):
+                    self.state['weightLadderPosition'] += 1
+                else:
+                    self.state['daysAtMaxWeight'] += 1
+                betbot_db.strategies.upsert(self.state)
+
+    # Creates a LAY bet on the race favourite at a stake weighted by the daily weighting.
+    def create_bets(self, market=None, market_book=None):
+        bets = []
+        if market and market_book:
+            self.update_state()
+            stake = helpers.get_stake_by_ladder_position(0)  # fixed staking plan
+            weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
+            runner = helpers.get_favourite(market_book)
             new_bet = {
                 'selectionId': runner['selectionId'],
                 'handicap': 0,
                 'side': 'LAY',
                 'orderType': 'MARKET_ON_CLOSE',
                 'marketOnCloseOrder': {
-                    'liability': self.get_lay_liability(stake, runner['lastPriceTraded'])
+                    'liability': helpers.get_lay_liability(stake * weight, runner['lastPriceTraded'])
                 }}
-            strategy_bets.append(new_bet)
-        self.update_state()
-
+            bets.append(new_bet)
+        else:
+            msg = 'Failed to create bets for strategy %s, no market provided' % self.reference
+            raise Exception(msg)
         return bets
