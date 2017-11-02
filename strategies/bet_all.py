@@ -16,15 +16,19 @@ class BetAllStrategy(object):
         self.state = betbot_db.strategies.get_by_reference(self.reference)
         if not self.state:  # no state available, create an initial state
             self.state = betbot_db.strategies.upsert({
-                    'strategyRef': 'ABS1',
+                    'strategyRef': self.reference,
                     'stakeLadderPosition': 0,
                     'weightLadderPosition': 0,
-                    'betsAtMaxState': 0,
-                    'betsAtMaxWeight': 0,
+                    'betsAtMaxStake': 0,
+                    'daysAtMaxWeight': 0,
                     'stopLoss': False,
                     'active': True,
                     'updatedDate': datetime.utcnow()
                 })
+
+    def strategy_log(self, msg=''):
+        msg = ('[%s] ' % self.reference) + msg
+        self.logger.info(msg)
 
     # Updates the state of the strategy prior to the next (or first) bet being placed.
     # Once a day:  If this is the first day of trading or the strategy generated a profit on the previous day,
@@ -42,35 +46,58 @@ class BetAllStrategy(object):
     #              maximum stake to 0.
     #              If bets at maximum stake reaches 4 (i.e. 3 bets placed at maximum), set stop loss to True.
     def update_state(self):
-        if self.state['updatedDate'] < helpers.get_start_of_day():  # once a day
+        if self.state['updatedDate'] < helpers.get_start_of_day():  # Once a day
+            self.strategy_log('Updating state at beginning of new day.')
             if helpers.strategy_won_yesterday(self.reference):
+                self.strategy_log('Won yesterday.')
                 self.state['weightLadderPosition'] = 0
+                weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
+                self.strategy_log('Reset weighting to %sx.' % weight)
+                self.state['daysAtMaxWeight'] = 0
+                self.strategy_log('Reset days at maximum weight to 0.')
             else:
+                self.logger.info('Lost yesterday.')
                 if self.state['weightLadderPosition'] < (len(settings.weight_ladder) - 1):
                     self.state['weightLadderPosition'] += 1
+                    weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
+                    self.strategy_log('Incremented weighting to %sx.' % weight)
                 else:
-                    self.state['betsAtMaxWeight'] = 0
+                    self.state['daysAtMaxWeight'] += 1
+                    self.strategy_log('Incremented days at maximum weight to %s.' % self.state['daysAtMaxWeight'])
+            # Regardless of win or loss yesterday...
             self.state['stakeLadderPosition'] = 0
-            self.state['betsAtMaxState'] = 0
+            self.strategy_log('Reset stake ladder.')
+            self.state['betsAtMaxStake'] = 0
+            self.strategy_log('Reset bets at maximum stake to 0.')
             self.state['stopLoss'] = False
-        else:  # once a race
+            self.strategy_log('Removed any stop loss from the previous day.')
+        else:  # Once a race
             if helpers.strategy_won_last_market_today(self.reference):
+                self.strategy_log('Won last race.')
                 self.state['stakeLadderPosition'] = 0
-                self.state['betsAtMaxState'] = 0
+                self.strategy_log('Reset stake ladder.')
+                self.state['betsAtMaxStake'] = 0
+                self.strategy_log('Reset bets at maximum stake to 0.')
             else:
+                self.strategy_log('Lost last race.')
                 if self.state['stakeLadderPosition'] < (len(settings.stake_ladder) - 1):
                     self.state['stakeLadderPosition'] += 1
+                    stake_multiplier = helpers.get_stake_by_ladder_position(self.state['stakeLadderPosition'])
+                    self.strategy_log('Incremented stake ladder to %sx.' % stake_multiplier)
                 else:
-                    self.state['betsAtMaxState'] += 1
-                    if self.state['betsAtMaxState'] == 4:
+                    self.state['betsAtMaxStake'] += 1
+                    self.strategy_log('Incremented bets at maximum stake to %s.' % self.state['betsAtMaxStake'])
+                    if self.state['betsAtMaxStake'] == 4:
                         self.state['stopLoss'] = True
+                        self.strategy_log('Stop loss triggered, 3 races lost at maximum stake.')
+        betbot_db.strategies.upsert(self.state)
 
     def create_bets(self, market=None, market_book=None):
         bets = []
         if market and market_book:
             self.update_state()
             if self.state['stopLoss']:
-                self.logger.info('Strategy %s has triggered a stop loss, no more bets today.' % self.reference)
+                self.strategy_log('Stop loss triggered, no more bets today.')
             else:
                 runner = helpers.get_favourite(market_book)
                 stake = helpers.get_stake_by_ladder_position(self.state['stakeLadderPosition'])
