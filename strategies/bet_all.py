@@ -53,7 +53,7 @@ class BetAllStrategy(object):
             self.state['stakeLadderPosition'] = 0
             self.state['betsAtMaxState'] = 0
             self.state['stopLoss'] = False
-        else: # once a race
+        else:  # once a race
             if helpers.strategy_won_last_market_today(self.reference):
                 self.state['stakeLadderPosition'] = 0
                 self.state['betsAtMaxState'] = 0
