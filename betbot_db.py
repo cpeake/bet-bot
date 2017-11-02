@@ -129,7 +129,7 @@ class InstructionRepository(object):
         bets = []
         for bet in db.instructions.find({"settled": False}):
             bets.append(bet)
-        self.logger.debug('Found %s active instructions' % len(bets))
+        self.logger.debug('Found %s active instructions.' % len(bets))
         return bets
 
     def set_settled(self, cleared_orders=None):
@@ -183,20 +183,28 @@ class OrderRepository(object):
         }))
 
     def get_latest_settled_by_strategy(self, strategy_ref=''):
-        return db.orders.find({
+        settled_orders = db.orders.find({
             "profit": {"$exists": True},
             "customerStrategyRef": strategy_ref
-        }).sort('settledDate', pymongo.DESCENDING).limit(1).next()
+        }).sort('settledDate', pymongo.DESCENDING).limit(1)
+        if settled_orders.count() > 0:
+            return settled_orders[0]
+        else:
+            return None
 
     def get_latest_settled_today_by_strategy(self, strategy_ref):
         now = datetime.utcnow()
         today_sod = datetime(now.year, now.month, now.day, 0, 0)
         today_eod = datetime(now.year, now.month, now.day, 23, 59)
-        return db.orders.find({
+        settled_orders = db.orders.find({
             "profit": {"$exists": True},
             "customerStrategyRef": strategy_ref,
             "settledDate": {'$gte': today_sod, '$lt': today_eod}
-        }).sort('settledDate', pymongo.DESCENDING).limit(1).next()
+        }).sort('settledDate', pymongo.DESCENDING).limit(1)
+        if settled_orders.count() > 0:
+            return settled_orders[0]
+        else:
+            return None
 
 
 class StrategyRepository(object):
