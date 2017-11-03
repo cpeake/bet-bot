@@ -82,14 +82,14 @@ class BetAllStrategy(object):
                 self.strategy_log('Lost last race.')
                 if self.state['stakeLadderPosition'] < (len(settings.stake_ladder) - 1):
                     self.state['stakeLadderPosition'] += 1
-                    stake_multiplier = helpers.get_stake_by_ladder_position(self.state['stakeLadderPosition'])
+                    stake_multiplier = settings.stake_ladder[self.state['stakeLadderPosition']]
                     self.strategy_log('Incremented stake ladder to %sx.' % stake_multiplier)
                 else:
                     self.state['betsAtMaxStake'] += 1
                     self.strategy_log('Incremented bets at maximum stake to %s.' % self.state['betsAtMaxStake'])
-                    if self.state['betsAtMaxStake'] == 4:
+                    if self.state['betsAtMaxStake'] == 1:
                         self.state['stopLoss'] = True
-                        self.strategy_log('Stop loss triggered, 3 races lost at maximum stake.')
+                        self.strategy_log('Stop loss triggered, %s race(s) lost at maximum stake.' % self.state['betsAtMaxStake'])
         betbot_db.strategies.upsert(self.state)
 
     def create_bets(self, market=None, market_book=None):
