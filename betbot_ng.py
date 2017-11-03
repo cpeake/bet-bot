@@ -6,6 +6,7 @@ import betbot_db
 import strategies
 from time import time, sleep
 from betfair.api_ng import API
+from strategies import helpers
 from datetime import datetime
 from slackclient import SlackClient
 
@@ -99,6 +100,21 @@ class BetBot(object):
             # update throttle to refresh again in 15 minutes
             self.throttle['refresh_markets'] = now + (15 * 60)  # add 15 mins
 
+    def update_statistics(self, cleared_orders):
+        strategy_pnls = {}
+        for cleared_order in cleared_orders:
+            strategy_ref = cleared_order['customerStrategyRef']
+            if strategy_ref in strategy_pnls:
+                strategy_pnls[strategy_ref] += cleared_order['profit']
+            else:
+                strategy_pnls[strategy_ref] = cleared_order['profit']
+        for strategy_ref, pnl in strategy_pnls.items():
+            statistics = betbot_db.statistics.get_by_reference(strategy_ref)
+            if statistics['updatedDate'] < helpers.get_start_of_day():
+                statistics['dailyPnL'] = 0.0
+            statistics['dailyPnL'] += pnl
+            betbot_db.statistics.upsert(statistics)
+
     def update_orders(self):
         now = time()
         if now > self.throttle['update_orders']:
@@ -113,6 +129,7 @@ class BetBot(object):
                 cleared_orders = self.api.get_cleared_orders(bet_ids)
                 betbot_db.orders.upsert(cleared_orders)
                 betbot_db.instructions.set_settled(cleared_orders)
+                self.update_statistics(cleared_orders)
             # update throttle to refresh again in 1 minutes
             self.throttle['update_orders'] = now + 60  # add 1 min
 
@@ -129,7 +146,8 @@ class BetBot(object):
         market_book = self.get_market_book(market)
         return {
             self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
-            self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
+            # Lay All disabled for now due to £10 minimum liability on MARKET_ON_CLOSE orders.
+            # self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
         }
 
     def place_bets(self, market=None, market_bets=None):
@@ -137,25 +155,25 @@ class BetBot(object):
         venue = market['event']['venue']
         name = market['marketName']
         if market_bets:
-            for strategy_ref in market_bets:
-                market_bets = market_bets[strategy_ref]
-                resp = self.api.place_bets(market['marketId'], market_bets, strategy_ref)
-                if type(resp) is dict and 'status' in resp:
-                    if resp['status'] == 'SUCCESS':
-                        # set the market as played
-                        betbot_db.markets.set_played(market)
-                        # persist the instructions
-                        for instruction in resp['instructionReports']:
-                            betbot_db.instructions.insert(market, instruction)
-                        self.logger.info('Successfully placed bet(s) on %s %s.' % (venue, name))
+            for strategy_ref, strategy_bets in market_bets.items():
+                if len(strategy_bets) > 0:
+                    resp = self.api.place_bets(market['marketId'], strategy_bets, strategy_ref)
+                    if type(resp) is dict and 'status' in resp:
+                        if resp['status'] == 'SUCCESS':
+                            # set the market as played
+                            betbot_db.markets.set_played(market)
+                            # persist the instructions
+                            for instruction in resp['instructionReports']:
+                                betbot_db.instructions.insert(market, instruction)
+                            self.logger.info('Successfully placed %s bet(s) on %s %s.' % (strategy_ref, venue, name))
+                        else:
+                            self.logger.error(
+                                'Failed to place %s bet(s) on %s %s. (Error: %s)' % (strategy_ref, venue, name, resp['errorCode']))
+                            # set the market as skipped, it's too late to try again
+                            betbot_db.markets.set_skipped(market, resp['errorCode'])
                     else:
-                        self.logger.error(
-                            'Failed to place bet(s) on %s %s. (Error: %s)' % (venue, name, resp['errorCode']))
-                        # set the market as skipped, it's too late to try again
-                        betbot_db.markets.set_skipped(market, resp['errorCode'])
-                else:
-                    msg = 'Failed to place bet(s) on %s %s - resp = %s' % (venue, name, resp)
-                    raise Exception(msg)
+                        msg = 'Failed to place %s bet(s) on %s %s - resp = %s' % (strategy_ref, venue, name, resp)
+                        raise Exception(msg)
 
     def post_slack_message(self, msg=''):
         if msg:
@@ -196,8 +214,8 @@ class BetBot(object):
                         strategy_bets = self.create_bets(next_market)
                         if strategy_bets:
                             self.logger.info('Generated bets on %s %s.\n%s' % (venue, name, strategy_bets))
-                            # self.place_bets(next_market, strategy_bets)
-                            betbot_db.markets.set_skipped(next_market, 'SIMULATION_MODE')  # comment when live
+                            self.place_bets(next_market, strategy_bets)
+                            # betbot_db.markets.set_skipped(next_market, 'SIMULATION_MODE')  # comment when live
                         else:
                             self.logger.info('No bets generated on %s %s, skipping.')
                             betbot_db.markets.set_skipped(next_market, 'NO_BETS_CREATED')
