@@ -32,7 +32,7 @@ if not APP_KEY:
     logger.error('BETFAIR_APP_KEY is not set, exiting.')
     exit()
 
-EXIT_ON_ERROR = True  # set to False when bot is ready to run 24/7
+EXIT_ON_ERROR = False  # set to False when bot is ready to run 24/7
 
 while True:  # loop forever
     try:
