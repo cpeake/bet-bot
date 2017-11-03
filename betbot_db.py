@@ -10,7 +10,7 @@ module_logger = logging.getLogger('betbot_application.betbot_db')
 MONGODB_URI = os.environ['MONGODB_URI']
 
 if not MONGODB_URI:
-    print('MONGODB_URI is not set, exiting.')
+    module_logger.error('MONGODB_URI is not set, exiting.')
     exit()
 
 # Connect to MongoDB
@@ -30,7 +30,6 @@ class MarketRepository(object):
 
     def upsert(self, market=None):
         if market:
-            self.logger.debug('Upserting market %s' % market['marketId'])
             # convert datetime strings to proper date times for storing as ISODate
             market_start_time = market['marketStartTime']
             open_date = market['event']['openDate']
@@ -129,7 +128,10 @@ class InstructionRepository(object):
         bets = []
         for bet in db.instructions.find({"settled": False}):
             bets.append(bet)
-        self.logger.debug('Found %s active instructions.' % len(bets))
+        if len(bets) == 0:
+            self.logger.debug('No active instructions to check.')
+        else:
+            self.logger.debug('Found %s active instructions to check.' % len(bets))
         return bets
 
     def set_settled(self, cleared_orders=None):
@@ -154,21 +156,27 @@ class OrderRepository(object):
     def upsert(self, order_list=None):
         if order_list is None:
             order_list = []
+        self.logger.debug('Upserting %s orders' % len(order_list))
         for order in order_list:
-            self.logger.debug('Upserting %s orders' % len(order_list))
             # convert date strings to datetimes (ISODates in MongoDB)
             placed_date = order['placedDate']
-            market_start_time = order['itemDescription']['marketStartTime']
-            settled_date = order['settledDate']
-            last_matched_date = order['lastMatchedDate']
+            market_start_time = None
+            if 'itemDescription' in order:
+                market_start_time = order['itemDescription']['marketStartTime']
+            settled_date = None
+            if 'settledDate' in order:
+                settled_date = order['settledDate']
+            matched_date = None
+            if 'matchedDate' in order:
+                matched_date = order['matchedDate']
             if placed_date and type(placed_date) is str:
                 order['placedDate'] = dateutil.parser.parse(placed_date)
-            if market_start_time and type(placed_date) is str:
+            if market_start_time and type(market_start_time) is str:
                 order['itemDescription']['marketStartTime'] = dateutil.parser.parse(market_start_time)
             if settled_date and type(settled_date) is str:
                 order['settledDate'] = dateutil.parser.parse(settled_date)
-            if last_matched_date and type(last_matched_date) is str:
-                order['lastMatchedDate'] = dateutil.parser.parse(last_matched_date)
+            if matched_date and type(matched_date) is str:
+                order['matchedDate'] = dateutil.parser.parse(matched_date)
             key = {'betId': order['betId']}
             db.orders.update(key, order, upsert=True)
 
@@ -222,8 +230,35 @@ class StrategyRepository(object):
             db.strategies.update(key, strategy_state, upsert=True)
 
 
+class StatisticRepository(object):
+    def __init__(self):
+        self.logger = logging.getLogger('betbot_application.betbot_db.StatisticsRepository')
+
+    def get_by_reference(self, strategy_ref=''):
+        statistic = db.statistics.find_one({'strategyRef': strategy_ref})
+        if not statistic:
+            statistic = {
+                'strategyRef': strategy_ref,
+                'dailyPnL': 0.0,
+                'weeklyPnL': 0.0,
+                'monthlyPnL': 0.0,
+                'ytdPnL': 0.0,
+                'lifetimePnL': 0.0,
+                'updatedDate': datetime.utcnow()
+            }
+            self.upsert(statistic)
+        return statistic
+
+    def upsert(self, statistic=None):
+        if statistic:
+            statistic['updatedDate'] = datetime.utcnow()
+            key = {'strategyRef': statistic['strategyRef']}
+            db.statistics.update(key, statistic, upsert=True)
+
+
 markets = MarketRepository()
 market_books = MarketBookRepository()
 instructions = InstructionRepository()
 orders = OrderRepository()
 strategies = StrategyRepository()
+statistics = StatisticRepository()
