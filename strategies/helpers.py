@@ -1,6 +1,9 @@
+import logging
 import settings
 import betbot_db
 from datetime import datetime
+
+module_logger = logging.getLogger('betbot_application.betbot_db')
 
 
 def get_stake_by_ladder_position(position=0):
@@ -13,6 +16,7 @@ def get_weight_by_ladder_position(position=0):
 
 def get_lay_liability(stake=0.0, price=0.0):
     """get the lay liability based on the provided stake and price"""
+    module_logger.info('Calculating lay liability: {stake: %s, price: %s}' % (stake, price))
     return stake * (price - 1.0)
 
 
@@ -20,7 +24,7 @@ def strategy_won_yesterday(strategy_ref=''):
     # Find all cleared orders (profit attribute exists) for this strategy from yesterday and sum the profit.
     # if sum(profit) < 0 then False otherwise True (profit >= 0 or no cleared orders)
     orders = betbot_db.orders.get_settled_yesterday_by_strategy(strategy_ref)
-    if orders.count() == 0:
+    if len(orders) == 0:
         return True  # if there are no orders default to True
     profit = 0.0
     for order in orders:
