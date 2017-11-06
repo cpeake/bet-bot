@@ -359,6 +359,25 @@ class API(object):
         else:
             raise Exception(str(resp))
 
+    def get_runner_book(self, market_id=None, selection_id=None, req_id=1):
+        url = 'https://api.betfair.com/exchange/betting/json-rpc/v1'
+        params = {}
+        params['locale'] = self.locale
+        params['marketId'] = market_id
+        params['selectionId'] = selection_id
+        req = {
+            'jsonrpc': '2.0',
+            'method': 'SportsAPING/v1.0/listRunnerBook',
+            'id': req_id,
+            'params': params
+        }
+        req = json.dumps(req)  # convert dict to json format
+        resp = self.send_http_request(url, req)
+        if type(resp) is dict and 'result' in resp:
+            return resp['result']
+        else:
+            raise Exception(str(resp))
+
     def place_bets(self, market_id = '', bets = None, strategy_ref = '', customer_ref = '', req_id = 1):
         """place bets on given market id.
         returns list of bet execution reports.
