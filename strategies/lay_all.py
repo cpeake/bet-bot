@@ -13,9 +13,9 @@ class LayAllStrategy(object):
         self.init_state()
 
     def init_state(self):
-        self.state = betbot_db.strategies.get_by_reference(self.reference)
+        self.state = betbot_db.strategy_repo.get_by_reference(self.reference)
         if not self.state:  # no state available, create an initial state
-            self.state = betbot_db.strategies.upsert({
+            self.state = betbot_db.strategy_repo.upsert({
                 'strategyRef': self.reference,
                 'name': 'All Lay Strategy',
                 'weightLadderPosition': 0,
@@ -54,7 +54,7 @@ class LayAllStrategy(object):
                 else:
                     self.state['daysAtMaxWeight'] += 1
                     self.strategy_log('Incremented days at maximum weight to %s.' % self.state['daysAtMaxWeight'])
-            betbot_db.strategies.upsert(self.state)
+            betbot_db.strategy_repo.upsert(self.state)
 
     # Creates a LAY bet on the race favourite at a stake weighted by the daily weighting.
     def create_bets(self, market=None, market_book=None):

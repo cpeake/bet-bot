@@ -93,7 +93,7 @@ class BetBot(object):
             if type(markets) is list:  # upsert into the DB
                 self.logger.info('Retrieved %s markets.' % len(markets))
                 for market in markets:
-                    betbot_db.markets.upsert(market)
+                    betbot_db.market_repo.upsert(market)
             else:
                 msg = 'Failed to retrieve markets: resp = %s' % markets
                 raise Exception(msg)
@@ -109,26 +109,34 @@ class BetBot(object):
             else:
                 strategy_pnls[strategy_ref] = cleared_order['profit']
         for strategy_ref, pnl in strategy_pnls.items():
-            statistics = betbot_db.statistics.get_by_reference(strategy_ref)
+            statistics = betbot_db.statistic_repo.get_by_reference(strategy_ref)
             if statistics['updatedDate'] < helpers.get_start_of_day():
                 statistics['dailyPnL'] = 0.0
             statistics['dailyPnL'] += pnl
-            betbot_db.statistics.upsert(statistics)
+            betbot_db.statistic_repo.upsert(statistics)
 
     def update_orders(self):
         now = time()
         if now > self.throttle['update_orders']:
-            active_instructions = betbot_db.instructions.get_active()
+            active_instructions = betbot_db.instruction_repo.get_active()
             if active_instructions:
                 self.logger.info('Updating order(s) on %s active instruction(s).' % len(active_instructions))
                 bet_ids = []
                 for bet in active_instructions:
                     bet_ids.append(bet['betId'])
                 current_orders = self.api.get_current_orders(bet_ids)
-                betbot_db.orders.upsert(current_orders)
+                # Get indicative win or loss prior to the order clearing from the runner book.
+                for current_order in current_orders:
+                    runner_book = self.api.get_runner_book(current_order['marketId'], ['selectionId'])
+                    if runner_book['status'] == 'CLOSED':
+                        if runner_book['runners'][0]['status'] == 'WINNER':
+                            current_order['betOutcome'] = 'WON'
+                        else:
+                            current_order['betOutcome'] = 'LOST'
+                betbot_db.order_repo.upsert(current_orders)
                 cleared_orders = self.api.get_cleared_orders(bet_ids)
-                betbot_db.orders.upsert(cleared_orders)
-                betbot_db.instructions.set_settled(cleared_orders)
+                betbot_db.order_repo.upsert(cleared_orders)
+                betbot_db.instruction_repo.set_settled(cleared_orders)
                 self.update_statistics(cleared_orders)
             # update throttle to refresh again in 1 minutes
             self.throttle['update_orders'] = now + 60  # add 1 min
@@ -136,7 +144,7 @@ class BetBot(object):
     def get_market_book(self, market=None):
         books = self.api.get_market_books([market['marketId']])
         if type(books) is list:
-            betbot_db.market_books.insert(books[0])
+            betbot_db.market_book_repo.insert(books[0])
             return books[0]
         else:
             msg = 'Failed to get market book: resp = %s' % books
@@ -155,24 +163,56 @@ class BetBot(object):
         venue = market['event']['venue']
         name = market['marketName']
         if market_bets:
+            # Place all the fire-and-forget MARKET_ON_CLOSE (BSP) instructions first.
             for strategy_ref, strategy_bets in market_bets.items():
-                if len(strategy_bets) > 0:
-                    resp = self.api.place_bets(market['marketId'], strategy_bets, strategy_ref)
+                bsp_bets = []
+                for strategy_bet in strategy_bets:
+                    if 'marketOnClose' in strategy_bet:
+                        bsp_bets.append(strategy_bet)
+                if len(bsp_bets) > 0:
+                    resp = self.api.place_bets(market['marketId'], bsp_bets, strategy_ref)
                     if type(resp) is dict and 'status' in resp:
                         if resp['status'] == 'SUCCESS':
                             # set the market as played
-                            betbot_db.markets.set_played(market)
+                            betbot_db.market_repo.set_played(market)
                             # persist the instructions
                             for instruction in resp['instructionReports']:
-                                betbot_db.instructions.insert(market, instruction)
-                            self.logger.info('Successfully placed %s bet(s) on %s %s.' % (strategy_ref, venue, name))
+                                betbot_db.instruction_repo.insert(market, instruction)
+                            self.logger.info('Successfully placed %s BSP bet(s) on %s %s.' % (strategy_ref, venue, name))
                         else:
                             self.logger.error(
-                                'Failed to place %s bet(s) on %s %s. (Error: %s)' % (strategy_ref, venue, name, resp['errorCode']))
+                                'Failed to place %s BSP bet(s) on %s %s. (Error: %s)' % (strategy_ref, venue, name, resp['errorCode']))
                             # set the market as skipped, it's too late to try again
-                            betbot_db.markets.set_skipped(market, resp['errorCode'])
+                            betbot_db.market_repo.set_skipped(market, resp['errorCode'])
                     else:
-                        msg = 'Failed to place %s bet(s) on %s %s - resp = %s' % (strategy_ref, venue, name, resp)
+                        msg = 'Failed to place %s BSP bet(s) on %s %s - resp = %s' % (strategy_ref, venue, name, resp)
+                        raise Exception(msg)
+            # Now place all the LIMIT instructions, making sure they fill.
+            for strategy_ref, strategy_bets in market_bets.items():
+                limit_bets = []
+                for strategy_bet in strategy_bets:
+                    if 'limitOrder' in strategy_bet:
+                        limit_bets.append(strategy_bet)
+                if len(limit_bets) > 0:
+                    resp = self.api.place_bets(market['marketId'], limit_bets, strategy_ref)
+                    if type(resp) is dict and 'status' in resp:
+                        if resp['status'] == 'SUCCESS':
+                            # Determine which instructions have executed (filled).
+                            # set the market as played
+                            betbot_db.market_repo.set_played(market)
+                            # persist the instructions
+                            for instruction in resp['instructionReports']:
+                                betbot_db.instruction_repo.insert(market, instruction)
+                            self.logger.info(
+                                'Successfully placed %s LIMIT bet(s) on %s %s.' % (strategy_ref, venue, name))
+                        else:
+                            self.logger.error(
+                                'Failed to place %s LIMIT bet(s) on %s %s. (Error: %s)' %
+                                (strategy_ref, venue, name, resp['errorCode'])
+                            )
+                            betbot_db.market_repo.set_skipped(market, resp['errorCode'])
+                    else:
+                        msg = 'Failed to place %s LIMIT bet(s) on %s %s - resp = %s' % (strategy_ref, venue, name, resp)
                         raise Exception(msg)
 
     def post_slack_message(self, msg=''):
@@ -197,7 +237,7 @@ class BetBot(object):
             self.keep_alive()  # refresh Betfair API-NG login session (every 15 minutes)
             self.refresh_markets()  # refresh available markets (every 15 minutes)
             self.update_orders()  # update current and cleared orders (every 1 minute)
-            next_market = betbot_db.markets.get_next_playable()
+            next_market = betbot_db.market_repo.get_next_playable()
             if next_market:
                 name = next_market['marketName']
                 venue = next_market['event']['venue']
@@ -208,7 +248,7 @@ class BetBot(object):
                 if wait < 0:  # "next" market is in the past and can't be played
                     msg = "%s %s has already started, skipping." % (venue, name)
                     self.logger.warning(msg)
-                    betbot_db.markets.set_skipped(next_market, 'MARKET_IN_PAST')
+                    betbot_db.market_repo.set_skipped(next_market, 'MARKET_IN_PAST')
                 else:
                     if wait < 60:  # process the next market, less than a minute to go before start
                         strategy_bets = self.create_bets(next_market)
@@ -218,7 +258,7 @@ class BetBot(object):
                             # betbot_db.markets.set_skipped(next_market, 'SIMULATION_MODE')  # comment when live
                         else:
                             self.logger.info('No bets generated on %s %s, skipping.')
-                            betbot_db.markets.set_skipped(next_market, 'NO_BETS_CREATED')
+                            betbot_db.market_repo.set_skipped(next_market, 'NO_BETS_CREATED')
                     else:  # wait until a minute before the next market is due to start
                         self.logger.info("Sleeping until 1 minute before %s %s starts." % (venue, name))
                         time_target = time() + wait - 60

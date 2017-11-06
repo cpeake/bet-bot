@@ -92,6 +92,23 @@ class MarketBookRepository(object):
             raise Exception(msg)
 
 
+class RunnerBookRepository(object):
+    def __init__(self):
+        self.logger = logging.getLogger('betbot_application.betbot_db.RunnerBookRepository')
+
+    def upsert(self, runner_book=None):
+        if runner_book:
+            # do datetime conversions first
+            key = {
+                'marketId': runner_book['marketId'],
+                'selectionId': runner_book['selectionId']
+            }
+            db.markets.update(key, runner_book, upsert=True)
+        else:
+            msg = 'Failed to upsert a runner book, None provided.'
+            raise Exception(msg)
+
+
 class InstructionRepository(object):
     def __init__(self):
         self.logger = logging.getLogger('betbot_application.betbot_db.InstructionRepository')
@@ -256,9 +273,20 @@ class StatisticRepository(object):
             db.statistics.update(key, statistic, upsert=True)
 
 
-markets = MarketRepository()
-market_books = MarketBookRepository()
-instructions = InstructionRepository()
-orders = OrderRepository()
-strategies = StrategyRepository()
-statistics = StatisticRepository()
+class AccountRepository(object):
+    def __init__(self):
+        self.logger = logging.getLogger('betbot_application.betbot_db.AccountRepository')
+
+    def insert(self, account=None):
+        if account:
+            db.account.insert(account)
+
+
+market_repo = MarketRepository()
+market_book_repo = MarketBookRepository()
+runner_book_repo = RunnerBookRepository()
+instruction_repo = InstructionRepository()
+order_repo = OrderRepository()
+strategy_repo = StrategyRepository()
+statistic_repo = StatisticRepository()
+account_repo = AccountRepository()

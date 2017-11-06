@@ -13,9 +13,9 @@ class BetAllStrategy(object):
         self.init_state()
 
     def init_state(self):
-        self.state = betbot_db.strategies.get_by_reference(self.reference)
+        self.state = betbot_db.strategy_repo.get_by_reference(self.reference)
         if not self.state:  # no state available, create an initial state
-            self.state = betbot_db.strategies.upsert({
+            self.state = betbot_db.strategy_repo.upsert({
                     'strategyRef': self.reference,
                     'stakeLadderPosition': 0,
                     'weightLadderPosition': 0,
@@ -90,7 +90,7 @@ class BetAllStrategy(object):
                     if self.state['betsAtMaxStake'] == 1:
                         self.state['stopLoss'] = True
                         self.strategy_log('Stop loss triggered, %s race(s) lost at maximum stake.' % self.state['betsAtMaxStake'])
-        betbot_db.strategies.upsert(self.state)
+        betbot_db.strategy_repo.upsert(self.state)
 
     def create_bets(self, market=None, market_book=None):
         bets = []
