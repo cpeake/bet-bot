@@ -26,6 +26,7 @@ class BetBot(object):
             'wait': 1.0,  # time in seconds between requests
             'keep_alive': time(),  # auto-updated in keep_alive()
             'update_orders': time(),  # auto-updated in update_orders()
+            'update_account_funds': time(),  # auto-updated in update_account_funds()
             'refresh_markets': time()  # auto-updated in refresh_markets()
         }
         self.bet_all_strategy = strategies.BetAllStrategy()
@@ -137,9 +138,20 @@ class BetBot(object):
                 cleared_orders = self.api.get_cleared_orders(bet_ids)
                 betbot_db.order_repo.upsert(cleared_orders)
                 betbot_db.instruction_repo.set_settled(cleared_orders)
+                # If some orders have cleared, update account balances.
+                if len(cleared_orders) > 0:
+                    account_funds = self.api.get_account_funds()
+                    betbot_db.account_funds_repo.upsert(account_funds)
                 self.update_statistics(cleared_orders)
             # update throttle to refresh again in 1 minutes
             self.throttle['update_orders'] = now + 60  # add 1 min
+
+    def update_account_funds(self):
+        now = time()
+        if now > self.throttle['update_account_funds']:
+            account_funds = self.api.get_account_funds()
+            betbot_db.account_funds_repo.upsert(account_funds)
+            self.throttle['update_account_funds'] = now + (60 * 60 * 24)  # add 1 day
 
     def get_market_book(self, market=None):
         books = self.api.get_market_books([market['marketId']])
@@ -237,6 +249,7 @@ class BetBot(object):
             self.keep_alive()  # refresh Betfair API-NG login session (every 15 minutes)
             self.refresh_markets()  # refresh available markets (every 15 minutes)
             self.update_orders()  # update current and cleared orders (every 1 minute)
+            self.update_account_funds()  # update account funds (every 1 day)
             next_market = betbot_db.market_repo.get_next_playable()
             if next_market:
                 name = next_market['marketName']

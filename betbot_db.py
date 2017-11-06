@@ -273,13 +273,15 @@ class StatisticRepository(object):
             db.statistics.update(key, statistic, upsert=True)
 
 
-class AccountRepository(object):
+class AccountFundsRepository(object):
     def __init__(self):
         self.logger = logging.getLogger('betbot_application.betbot_db.AccountRepository')
 
-    def insert(self, account=None):
-        if account:
-            db.account.insert(account)
+    def upsert(self, account_funds=None):
+        if account_funds:
+            account_funds['updatedDate'] = datetime.utcnow()
+            key = {'wallet', account_funds['wallet']}
+            db.account_funds.upsert(key, account_funds, upsert=True)
 
 
 market_repo = MarketRepository()
@@ -289,4 +291,4 @@ instruction_repo = InstructionRepository()
 order_repo = OrderRepository()
 strategy_repo = StrategyRepository()
 statistic_repo = StatisticRepository()
-account_repo = AccountRepository()
+account_funds_repo = AccountFundsRepository()
