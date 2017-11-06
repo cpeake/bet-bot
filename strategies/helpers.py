@@ -23,7 +23,7 @@ def get_lay_liability(stake=0.0, price=0.0):
 def strategy_won_yesterday(strategy_ref=''):
     # Find all cleared orders (profit attribute exists) for this strategy from yesterday and sum the profit.
     # if sum(profit) < 0 then False otherwise True (profit >= 0 or no cleared orders)
-    orders = betbot_db.orders.get_settled_yesterday_by_strategy(strategy_ref)
+    orders = betbot_db.order_repo.get_settled_yesterday_by_strategy(strategy_ref)
     if len(orders) == 0:
         return True  # if there are no orders default to True
     profit = 0.0
@@ -35,12 +35,12 @@ def strategy_won_yesterday(strategy_ref=''):
 def strategy_won_last_market(strategy_ref=''):
     """return True if the most recent bet made by the strategy WON
        or if there is no previous bet made by the strategy, False otherwise"""
-    order = betbot_db.orders.get_latest_settled_by_strategy(strategy_ref)
+    order = betbot_db.order_repo.get_latest_settled_by_strategy(strategy_ref)
     if order:
-        if order['betOutcome'] == 'WON':
-            return True
-        else:
+        if order['betOutcome'] == 'LOST':
             return False
+        else:
+            return True
     else:
         return True
 
@@ -48,12 +48,12 @@ def strategy_won_last_market(strategy_ref=''):
 def strategy_won_last_market_today(strategy_ref=''):
     """return True if the most recent bet made by the strategy WON
        or if there is no previous bet made by the strategy, False otherwise"""
-    order = betbot_db.orders.get_latest_settled_today_by_strategy(strategy_ref)
+    order = betbot_db.order_repo.get_latest_settled_today_by_strategy(strategy_ref)
     if order:
-        if order['betOutcome'] == 'WON':
-            return True
-        else:
+        if order['betOutcome'] == 'LOST':
             return False
+        else:
+            return True
     else:
         return True
 
