@@ -4,6 +4,7 @@ import dateutil.parser
 import pymongo
 from datetime import datetime, timedelta
 from pymongo import MongoClient
+from strategies import helpers
 
 module_logger = logging.getLogger('betbot_application.betbot_db')
 
@@ -231,6 +232,33 @@ class OrderRepository(object):
         else:
             return None
 
+    def get_pnls(self, start_date=None):
+        pipeline = []
+        if type(start_date) is datetime:
+            pipeline.append({'$match': {'placedDate': {'$gt': start_date}}})
+        pipeline.append({'$match': {'profit': {'$exists': True}}})
+        pipeline.append({'$group': {'_id': '$customerStrategyRef', 'pnl': {'$sum': '$profit'}}})
+        pnls = db.orders.aggregate(pipeline)
+        strategy_pnls = {}
+        for pnl in pnls:
+            strategy_pnls[pnl['_id']] = pnl['pnl']
+        return strategy_pnls
+
+    def get_daily_pnls(self):
+        return self.get_pnls(helpers.get_start_of_day())
+
+    def get_wtd_pnls(self):
+        return self.get_pnls(helpers.get_start_of_week())
+
+    def get_mtd_pnls(self):
+        return self.get_pnls(helpers.get_start_of_month())
+
+    def get_ytd_pnls(self):
+        return self.get_pnls(helpers.get_start_of_year())
+
+    def get_lifetime_pnls(self):
+        return self.get_pnls()
+
 
 class StrategyRepository(object):
     def __init__(self):
@@ -250,6 +278,9 @@ class StrategyRepository(object):
 class StatisticRepository(object):
     def __init__(self):
         self.logger = logging.getLogger('betbot_application.betbot_db.StatisticsRepository')
+
+    def get_all(self):
+        return db.statistics.find({})
 
     def get_by_reference(self, strategy_ref=''):
         statistic = db.statistics.find_one({'strategyRef': strategy_ref})

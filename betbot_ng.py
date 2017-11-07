@@ -7,7 +7,7 @@ import strategies
 from time import time, sleep
 from betfair.api_ng import API
 from strategies import helpers
-from datetime import datetime
+from datetime import datetime, timedelta
 from slackclient import SlackClient
 
 module_logger = logging.getLogger('betbot_application.betbot_ng')
@@ -27,6 +27,7 @@ class BetBot(object):
             'keep_alive': time(),  # auto-updated in keep_alive()
             'update_orders': time(),  # auto-updated in update_orders()
             'update_account_funds': time(),  # auto-updated in update_account_funds()
+            'full_update_statistics': time(),  # auto-updated in full_update_statistics()
             'refresh_markets': time()  # auto-updated in refresh_markets()
         }
         self.bet_all_strategy = strategies.BetAllStrategy()
@@ -114,7 +115,33 @@ class BetBot(object):
             if statistics['updatedDate'] < helpers.get_start_of_day():
                 statistics['dailyPnL'] = 0.0
             statistics['dailyPnL'] += pnl
+            statistics['weeklyPnL'] += pnl
+            statistics['monthlyPnL'] += pnl
+            statistics['yearlyPnL'] += pnl
+            statistics['lifetimePnL'] += pnl
             betbot_db.statistic_repo.upsert(statistics)
+
+    def full_update_statistics(self):
+        now = time()
+        if now > self.throttle['full_update_statistics']:
+            self.logger.info('Doing a full strategy statistics update.')
+            statistics = betbot_db.statistic_repo.get_all()
+            daily_pnls = betbot_db.order_repo.get_daily_pnls()
+            wtd_pnls = betbot_db.order_repo.get_wtd_pnls()
+            mtd_pnls = betbot_db.order_repo.get_mtd_pnls()
+            ytd_pnls = betbot_db.order_repo.get_ytd_pnls()
+            lifetime_pnls = betbot_db.order_repo.get_lifetime_pnls()
+            for statistic in statistics:
+                strategy_ref = statistic['strategyRef']
+                statistic['dailyPnL'] = daily_pnls[strategy_ref]
+                statistic['weeklyPnL'] = wtd_pnls[strategy_ref]
+                statistic['monthlyPnL'] = mtd_pnls[strategy_ref]
+                statistic['yearlyPnL'] = ytd_pnls[strategy_ref]
+                statistic['lifetimePnL'] = lifetime_pnls[strategy_ref]
+                self.logger.debug(statistic)
+                betbot_db.statistic_repo.upsert(statistic)
+            # Run next at 01:00 tomorrow.
+            self.throttle['full_update_statistics'] = (helpers.get_tomorrow_start_of_day() + timedelta(hours=1)).time()
 
     def update_orders(self):
         now = time()
@@ -219,6 +246,7 @@ class BetBot(object):
             self.refresh_markets()  # refresh available markets (every 15 minutes)
             self.update_orders()  # update current and cleared orders (every 1 minute)
             self.update_account_funds()  # update account funds (every 1 day)
+            self.full_update_statistics()  # full update portfolio statistics
             next_market = betbot_db.market_repo.get_next_playable()
             if next_market:
                 name = next_market['marketName']
