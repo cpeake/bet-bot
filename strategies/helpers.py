@@ -1,7 +1,7 @@
 import logging
 import settings
 import betbot_db
-from datetime import datetime
+from datetime import datetime, timedelta
 
 module_logger = logging.getLogger('betbot_application.betbot_db')
 
@@ -73,3 +73,25 @@ def get_favourite(market_book=None):
 def get_start_of_day():
     now = datetime.utcnow()
     return datetime(now.year, now.month, now.day, 0, 0)
+
+
+def get_tomorrow_start_of_day():
+    now = datetime.utcnow()
+    sod = datetime(now.year, now.month, now.day, 0, 0)
+    return sod + timedelta(days=1)
+
+
+def get_start_of_week():
+    now = datetime.utcnow()
+    sod = datetime(now.year, now.month, now.day, 0, 0)
+    return sod - timedelta(days=(datetime.today().isoweekday() % 7) - 1)
+
+
+def get_start_of_month():
+    now = datetime.utcnow()
+    return datetime(now.year, now.month, 1, 0, 0)
+
+
+def get_start_of_year():
+    now = datetime.utcnow()
+    return datetime(now.year, 1, 1, 0, 0)
