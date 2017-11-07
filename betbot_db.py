@@ -280,8 +280,8 @@ class AccountFundsRepository(object):
     def upsert(self, account_funds=None):
         if account_funds:
             account_funds['updatedDate'] = datetime.utcnow()
-            key = {'wallet', account_funds['wallet']}
-            db.account_funds.upsert(key, account_funds, upsert=True)
+            key = {'wallet': account_funds['wallet']}
+            db.account_funds.update(key, account_funds, upsert=True)
 
 
 market_repo = MarketRepository()
