@@ -44,7 +44,8 @@ class BetAllStrategy(object):
     #              already at the maximum weight.
     #              If the previous race on the day was a WIN, reset the stake ladder position and bets at
     #              maximum stake to 0.
-    #              If bets at maximum stake reaches 4 (i.e. 3 bets placed at maximum), set stop loss to True.
+    #              If bets at maximum stake reaches 1 (i.e. 1 bet placed at maximum), reset the stake ladder
+    #              and bets at maximum stake.
     def update_state(self):
         if self.state['updatedDate'] < helpers.get_start_of_day():  # Once a day
             self.strategy_log('Updating state at beginning of new day.')
@@ -88,8 +89,14 @@ class BetAllStrategy(object):
                     self.state['betsAtMaxStake'] += 1
                     self.strategy_log('Incremented bets at maximum stake to %s.' % self.state['betsAtMaxStake'])
                     if self.state['betsAtMaxStake'] == 1:
-                        self.state['stopLoss'] = True
-                        self.strategy_log('Stop loss triggered, %s race(s) lost at maximum stake.' % self.state['betsAtMaxStake'])
+                        self.state['stakeLadderPosition'] = 0
+                        self.state['betsAtMaxStake'] = 0
+                        self.strategy_log('Previous bet was at maximum stake, reset stake ladder.')
+                        # Strategy changed to reset stake ladder rather than trigger a stop loss.
+                        # self.state['stopLoss'] = True
+                        # msg = ''Stop loss triggered, %s race(s) lost at maximum stake.' %
+                        # self.state['betsAtMaxStake']'
+                        # self.strategy_log(msg)
         betbot_db.strategy_repo.upsert(self.state)
 
     def create_bets(self, market=None, market_book=None):
