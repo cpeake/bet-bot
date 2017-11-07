@@ -175,14 +175,9 @@ class BetBot(object):
         venue = market['event']['venue']
         name = market['marketName']
         if market_bets:
-            # Place all the fire-and-forget MARKET_ON_CLOSE (BSP) instructions first.
             for strategy_ref, strategy_bets in market_bets.items():
-                bsp_bets = []
-                for strategy_bet in strategy_bets:
-                    if 'marketOnClose' in strategy_bet:
-                        bsp_bets.append(strategy_bet)
-                if len(bsp_bets) > 0:
-                    resp = self.api.place_bets(market['marketId'], bsp_bets, strategy_ref)
+                if len(strategy_bets) > 0:
+                    resp = self.api.place_bets(market['marketId'], strategy_bets, strategy_ref)
                     if type(resp) is dict and 'status' in resp:
                         if resp['status'] == 'SUCCESS':
                             # set the market as played
@@ -190,41 +185,14 @@ class BetBot(object):
                             # persist the instructions
                             for instruction in resp['instructionReports']:
                                 betbot_db.instruction_repo.insert(market, instruction)
-                            self.logger.info('Successfully placed %s BSP bet(s) on %s %s.' % (strategy_ref, venue, name))
+                            self.logger.info('Successfully placed %s bet(s) on %s %s.' % (strategy_ref, venue, name))
                         else:
                             self.logger.error(
-                                'Failed to place %s BSP bet(s) on %s %s. (Error: %s)' % (strategy_ref, venue, name, resp['errorCode']))
+                                'Failed to place %s bet(s) on %s %s. (Error: %s)' % (strategy_ref, venue, name, resp['errorCode']))
                             # set the market as skipped, it's too late to try again
                             betbot_db.market_repo.set_skipped(market, resp['errorCode'])
                     else:
-                        msg = 'Failed to place %s BSP bet(s) on %s %s - resp = %s' % (strategy_ref, venue, name, resp)
-                        raise Exception(msg)
-            # Now place all the LIMIT instructions, making sure they fill.
-            for strategy_ref, strategy_bets in market_bets.items():
-                limit_bets = []
-                for strategy_bet in strategy_bets:
-                    if 'limitOrder' in strategy_bet:
-                        limit_bets.append(strategy_bet)
-                if len(limit_bets) > 0:
-                    resp = self.api.place_bets(market['marketId'], limit_bets, strategy_ref)
-                    if type(resp) is dict and 'status' in resp:
-                        if resp['status'] == 'SUCCESS':
-                            # Determine which instructions have executed (filled).
-                            # set the market as played
-                            betbot_db.market_repo.set_played(market)
-                            # persist the instructions
-                            for instruction in resp['instructionReports']:
-                                betbot_db.instruction_repo.insert(market, instruction)
-                            self.logger.info(
-                                'Successfully placed %s LIMIT bet(s) on %s %s.' % (strategy_ref, venue, name))
-                        else:
-                            self.logger.error(
-                                'Failed to place %s LIMIT bet(s) on %s %s. (Error: %s)' %
-                                (strategy_ref, venue, name, resp['errorCode'])
-                            )
-                            betbot_db.market_repo.set_skipped(market, resp['errorCode'])
-                    else:
-                        msg = 'Failed to place %s LIMIT bet(s) on %s %s - resp = %s' % (strategy_ref, venue, name, resp)
+                        msg = 'Failed to place %s bet(s) on %s %s - resp = %s' % (strategy_ref, venue, name, resp)
                         raise Exception(msg)
 
     def post_slack_message(self, msg=''):
