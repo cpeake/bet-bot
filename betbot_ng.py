@@ -128,7 +128,8 @@ class BetBot(object):
                 current_orders = self.api.get_current_orders(bet_ids)
                 # Get indicative win or loss prior to the order clearing from the runner book.
                 for current_order in current_orders:
-                    runner_book = self.api.get_runner_book(current_order['marketId'], ['selectionId'])
+                    runner_book = self.api.get_runner_book(current_order['marketId'], current_order['selectionId'])
+                    self.logger.debug(runner_book)
                     if runner_book['status'] == 'CLOSED':
                         if runner_book['runners'][0]['status'] == 'WINNER':
                             current_order['betOutcome'] = 'WON'

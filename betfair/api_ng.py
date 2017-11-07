@@ -359,7 +359,7 @@ class API(object):
         else:
             raise Exception(str(resp))
 
-    def get_runner_book(self, market_id=None, selection_id=None, req_id=1):
+    def get_runner_book(self, market_id='', selection_id='', req_id=1):
         url = 'https://api.betfair.com/exchange/betting/json-rpc/v1'
         params = {}
         params['locale'] = self.locale
@@ -374,7 +374,7 @@ class API(object):
         req = json.dumps(req)  # convert dict to json format
         resp = self.send_http_request(url, req)
         if type(resp) is dict and 'result' in resp:
-            return resp['result']
+            return resp['result'][0]
         else:
             raise Exception(str(resp))
 
