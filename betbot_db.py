@@ -71,8 +71,14 @@ class MarketRepository(object):
         """returns the next playable market"""
         self.logger.debug('Finding next playable market.')
         return db.markets.find({
-            "played": {"$exists": 0}
+            "played": {"$exists": False}
         }).sort([('marketStartTime', 1)]).next()
+
+    def get_most_recently_played(self):
+        self.logger.debug('Finding most recently played market.')
+        return db.markets.find({
+            "played": {"$exists": True}
+        }).sort([('marketStartTime', -1)]).next()
 
 
 class MarketBookRepository(object):
@@ -142,14 +148,25 @@ class InstructionRepository(object):
             db.instructions.update(key, instruction, upsert=True)
 
     def get_active(self):
-        """returns instructions not marked as settled"""
+        """returns live instructions not marked as settled"""
         bets = []
-        for bet in db.instructions.find({"settled": False}):
+        for bet in db.instructions.find({"settled": False, "simulated": {"$in": [False, None]}}):
             bets.append(bet)
         if len(bets) == 0:
             self.logger.debug('No active instructions to check.')
         else:
             self.logger.debug('Found %s active instructions to check.' % len(bets))
+        return bets
+
+    def get_active_simulated(self):
+        """returns simulated instructions not marked as settled"""
+        bets = []
+        for bet in db.instructions.find({"settled": False, "simulated": True}):
+            bets.append(bet)
+        if len(bets) == 0:
+            self.logger.debug('No active SIMULATED instructions to check.')
+        else:
+            self.logger.debug('Found %s SIMULATED active instructions to check.' % len(bets))
         return bets
 
     def set_settled(self, cleared_orders=None):

@@ -75,32 +75,41 @@ class BetBot(object):
         """refresh available markets every 15 minutes"""
         now = time()
         if now > self.throttle['refresh_markets']:
-            self.logger.info('Refreshing list of markets.')
-            # define the filter
-            params = {
-                'filter': {
-                    'eventTypeIds': ['7'],  # horse racing
-                    'marketTypeCodes': ['WIN'],
-                    'marketBettingTypes': ['ODDS'],
-                    'marketCountries': ['GB'],  # UK markets
-                    'turnInPlayEnabled': True,  # will go in-play
-                    'inPlayOnly': False  # market NOT currently in-play
-                },
-                'marketProjection': ['EVENT', 'MARKET_START_TIME'],
-                'maxResults': 1000,  # maximum allowed by Betfair
-                'sort': 'FIRST_TO_START'  # order so the next market by start time comes first
-            }
-            # send the request
-            markets = self.api.get_markets(params)
-            if type(markets) is list:  # upsert into the DB
-                self.logger.info('Retrieved %s markets.' % len(markets))
-                for market in markets:
-                    betbot_db.market_repo.upsert(market)
+            # Don't refresh markets within 1 minute of a market being played, race condition possible otherwise
+            # which could cause the market to be played twice.
+            # TODO: Look for a more elegant solution to market played/markets refreshed race condition.
+            last_market = betbot_db.market_repo.get_most_recently_played()
+            if now - last_market['marketStartTime'].timestamp() < 60:  # seconds
+                self.logger.info('Skipping markets refresh due to last market proximity.')
+                # update throttle to refresh again in 15 minutes
+                self.throttle['refresh_markets'] = now + (5 * 60)  # add 5 mins
             else:
-                msg = 'Failed to retrieve markets: resp = %s' % markets
-                raise Exception(msg)
-            # update throttle to refresh again in 15 minutes
-            self.throttle['refresh_markets'] = now + (15 * 60)  # add 15 mins
+                self.logger.info('Refreshing list of markets.')
+                # define the filter
+                params = {
+                    'filter': {
+                        'eventTypeIds': ['7'],  # horse racing
+                        'marketTypeCodes': ['WIN'],
+                        'marketBettingTypes': ['ODDS'],
+                        'marketCountries': ['GB'],  # UK markets
+                        'turnInPlayEnabled': True,  # will go in-play
+                        'inPlayOnly': False  # market NOT currently in-play
+                    },
+                    'marketProjection': ['EVENT', 'MARKET_START_TIME'],
+                    'maxResults': 1000,  # maximum allowed by Betfair
+                    'sort': 'FIRST_TO_START'  # order so the next market by start time comes first
+                }
+                # send the request
+                markets = self.api.get_markets(params)
+                if type(markets) is list:  # upsert into the DB
+                    self.logger.info('Retrieved %s markets.' % len(markets))
+                    for market in markets:
+                        betbot_db.market_repo.upsert(market)
+                else:
+                    msg = 'Failed to retrieve markets: resp = %s' % markets
+                    raise Exception(msg)
+                # update throttle to refresh again in 15 minutes
+                self.throttle['refresh_markets'] = now + (15 * 60)  # add 15 mins
 
     def update_statistics(self, cleared_orders):
         strategy_pnls = {}
@@ -141,7 +150,8 @@ class BetBot(object):
                 self.logger.debug(statistic)
                 betbot_db.statistic_repo.upsert(statistic)
             # Run next at 01:00 tomorrow.
-            self.throttle['full_update_statistics'] = (helpers.get_tomorrow_start_of_day() + timedelta(hours=1)).time()
+            tomorrow1am = helpers.get_tomorrow_start_of_day() + timedelta(hours=1)
+            self.throttle['full_update_statistics'] = tomorrow1am.timestamp()
 
     def update_orders(self):
         now = time()
