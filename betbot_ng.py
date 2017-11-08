@@ -134,10 +134,10 @@ class BetBot(object):
             for statistic in statistics:
                 strategy_ref = statistic['strategyRef']
                 statistic['dailyPnL'] = daily_pnls[strategy_ref] if strategy_ref in daily_pnls else 0
-                statistic['weeklyPnL'] = wtd_pnls[strategy_ref]
-                statistic['monthlyPnL'] = mtd_pnls[strategy_ref]
-                statistic['yearlyPnL'] = ytd_pnls[strategy_ref]
-                statistic['lifetimePnL'] = lifetime_pnls[strategy_ref]
+                statistic['weeklyPnL'] = wtd_pnls[strategy_ref] if strategy_ref in wtd_pnls else 0
+                statistic['monthlyPnL'] = mtd_pnls[strategy_ref] if strategy_ref in mtd_pnls else 0
+                statistic['yearlyPnL'] = ytd_pnls[strategy_ref] if strategy_ref in ytd_pnls else 0
+                statistic['lifetimePnL'] = lifetime_pnls[strategy_ref] if strategy_ref in lifetime_pnls else 0
                 self.logger.debug(statistic)
                 betbot_db.statistic_repo.upsert(statistic)
             # Run next at 01:00 tomorrow.
