@@ -19,6 +19,7 @@ logger.addHandler(ch)
 USERNAME = os.environ['BETFAIR_USERNAME']
 PASSWORD = os.environ['BETFAIR_PASSWORD']
 APP_KEY = os.environ['BETFAIR_APP_KEY']
+LIVE_MODE = 'LIVE_MODE' in os.environ and os.environ['LIVE_MODE'] == 'true'
 
 if not USERNAME:
     logger.error('BETFAIR_USERNAME is not set, exiting.')
@@ -39,7 +40,7 @@ while True:  # loop forever
         # Start BetBot
         logger.info('Starting BetBot')
         bot = BetBot()
-        bot.run(USERNAME, PASSWORD, APP_KEY)
+        bot.run(USERNAME, PASSWORD, APP_KEY, LIVE_MODE)
     except Exception as exc:
         msg = traceback.format_exc()
         http_err = 'ConnectionError:'

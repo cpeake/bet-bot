@@ -19,7 +19,7 @@ class BetBot(object):
         self.username = ''  # set by run() function at startup
         self.api = None  # set by run() function at startup
         self.sc = None  # set by run() function at startup
-        self.sim_mode = False  # set by run() function at startup
+        self.live_mode = False  # set by run() function at startup
         self.slack_channel = os.environ['SLACK_CHANNEL']
         self.throttle = {
             'next': time(),  # time we can send next request. auto-updated in do_throttle()
@@ -133,7 +133,7 @@ class BetBot(object):
             lifetime_pnls = betbot_db.order_repo.get_lifetime_pnls()
             for statistic in statistics:
                 strategy_ref = statistic['strategyRef']
-                statistic['dailyPnL'] = daily_pnls[strategy_ref]
+                statistic['dailyPnL'] = daily_pnls[strategy_ref] if strategy_ref in daily_pnls else 0
                 statistic['weeklyPnL'] = wtd_pnls[strategy_ref]
                 statistic['monthlyPnL'] = mtd_pnls[strategy_ref]
                 statistic['yearlyPnL'] = ytd_pnls[strategy_ref]
@@ -231,12 +231,17 @@ class BetBot(object):
                 text=msg
             )
 
-    def run(self, username='', password='', app_key=''):
+    def run(self, username='', password='', app_key='', live_mode=False):
         # Create the API object and login
         self.username = username
         self.api = API(False, ssl_prefix=username)  # connect to the UK (rather than AUS) API
         self.api.app_key = app_key
         self.do_login(username, password)
+        self.live_mode = live_mode
+        if self.live_mode:
+            self.logger.info('Running in LIVE mode!')
+        else:
+            self.logger.info('Running in SIMULATION mode.')
         # login to Slack
         self.sc = SlackClient(os.environ["SLACK_API_TOKEN"])
         self.post_slack_message('BetBot has started! :tada:')
