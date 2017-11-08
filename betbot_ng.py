@@ -251,7 +251,7 @@ class BetBot(object):
             self.refresh_markets()  # refresh available markets (every 15 minutes)
             self.update_orders()  # update current and cleared orders (every 1 minute)
             self.update_account_funds()  # update account funds (every 1 day)
-            self.full_update_statistics()  # full update portfolio statistics
+            # self.full_update_statistics()  # full update portfolio statistics
             next_market = betbot_db.market_repo.get_next_playable()
             if next_market:
                 name = next_market['marketName']
