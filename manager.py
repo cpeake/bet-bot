@@ -2,9 +2,11 @@
 import os
 import logging
 import traceback
+import threads
 from sys import exit
 from time import sleep
 from betbot_ng import BetBot
+from betfair.api_ng import API
 
 # Set up logging
 logger = logging.getLogger('betbot_application')
@@ -35,18 +37,20 @@ if not APP_KEY:
 
 EXIT_ON_ERROR = False  # set to False when bot is ready to run 24/7
 
-while True:  # loop forever
-    try:
-        # Start BetBot
-        logger.info('Starting BetBot')
-        bot = BetBot()
-        bot.run(USERNAME, PASSWORD, APP_KEY, LIVE_MODE)
-    except Exception as exc:
-        msg = traceback.format_exc()
-        http_err = 'ConnectionError:'
-        if http_err in msg:
-            msg = '%s%s' % (http_err, msg.rpartition(http_err)[2])
-        logger.error('BetBot Crashed: %s' % msg)
-        if EXIT_ON_ERROR:
-            exit()
-    sleep(60)  # wait for Betfair errors to clear
+api = API(False, ssl_prefix=USERNAME)
+session_manager = threads.SessionManager(api, USERNAME, PASSWORD, APP_KEY)
+session_manager.start()
+sleep(5)  # Allow the session manager time to log in.
+
+market_manager = threads.MarketManager(api)
+statistics_manager = threads.StatisticsManager(api)
+account_manager = threads.AccountManager(api)
+strategy_manager = threads.StrategyManager(api, LIVE_MODE)
+order_manager = threads.OrderManager(api)
+
+market_manager.start()
+statistics_manager.start()
+account_manager.start()
+strategy_manager.start()
+order_manager.start()
+

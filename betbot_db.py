@@ -150,7 +150,7 @@ class InstructionRepository(object):
     def get_active(self):
         """returns live instructions not marked as settled"""
         bets = []
-        for bet in db.instructions.find({"settled": False, "simulated": {"$in": [False, None]}}):
+        for bet in db.instructions.find({"settled": False, "live": {"$in": [True, None]}}):
             bets.append(bet)
         if len(bets) == 0:
             self.logger.debug('No active instructions to check.')
@@ -161,7 +161,7 @@ class InstructionRepository(object):
     def get_active_simulated(self):
         """returns simulated instructions not marked as settled"""
         bets = []
-        for bet in db.instructions.find({"settled": False, "simulated": True}):
+        for bet in db.instructions.find({"settled": False, "live": False}):
             bets.append(bet)
         if len(bets) == 0:
             self.logger.debug('No active SIMULATED instructions to check.')
@@ -193,6 +193,7 @@ class OrderRepository(object):
             order_list = []
         self.logger.debug('Upserting %s orders' % len(order_list))
         for order in order_list:
+            self.logger.debug(order)
             # convert date strings to datetimes (ISODates in MongoDB)
             placed_date = order['placedDate']
             market_start_time = None
@@ -284,6 +285,10 @@ class StrategyRepository(object):
     def get_by_reference(self, strategy_ref=''):
         self.logger.debug('Getting strategy with reference %s' % strategy_ref)
         return db.strategies.find_one({'strategyRef': strategy_ref})
+
+    def is_live(self, strategy_ref=''):
+        strategy = db.strategies.find_one({'strategyRef': strategy_ref})
+        return 'live' in strategy and strategy['live']
 
     def upsert(self, strategy_state=None):
         if strategy_state:

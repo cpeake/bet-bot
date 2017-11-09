@@ -1,17 +1,7 @@
-__version__ = 0.06
-
 import os
 import json
 from .price_mod import convert_price, get_price_spread
-try:
-    import requests
-except:
-    msg = 'ERROR: Requests module not installed.\n'
-    msg += 'INSTALLATION (run as admin):\n'
-    msg += '1. Install "pip": http://pip.readthedocs.org/en/latest/installing.html\n'
-    msg += '2. Install "requests": pip install requests'
-    print(msg)
-    exit()
+import requests
 
 class API(object):
     """betfair api-ng library"""
