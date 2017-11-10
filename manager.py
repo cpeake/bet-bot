@@ -1,11 +1,9 @@
 """Betting Bot Manager"""
 import os
 import logging
-import traceback
 import threads
 from sys import exit
 from time import sleep
-from betbot_ng import BetBot
 from betfair.api_ng import API
 
 # Set up logging
