@@ -8,11 +8,11 @@ import betbot_db
 import strategies
 
 # Set up logging
-logger = logging.getLogger('sss.StrategyManager')
+logger = logging.getLogger('STRAM')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
+formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -20,7 +20,7 @@ logger.addHandler(ch)
 class StrategyManager(threading.Thread):
     def __init__(self, api, live_mode=False):
         threading.Thread.__init__(self)
-        self.logger = logging.getLogger('sss.StrategyManager')
+        self.logger = logging.getLogger('STRAM')
         self.api = api
         self.live_mode = live_mode
         self.bet_all_strategy = strategies.BetAllStrategy()

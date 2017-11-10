@@ -5,11 +5,11 @@ from time import time, sleep
 import betbot_db
 
 # Set up logging
-logger = logging.getLogger('sss.MarketManager')
+logger = logging.getLogger('MARKM')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
+formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -21,7 +21,7 @@ class MarketManager(threading.Thread):
     def __init__(self, api):
         threading.Thread.__init__(self)
         self.api = api
-        self.logger = logging.getLogger('sss.MarketManager')
+        self.logger = logging.getLogger('MARKM')
 
     def run(self):
         self.logger.info('Started Market Manager...')

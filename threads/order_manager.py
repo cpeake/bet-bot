@@ -8,11 +8,11 @@ from strategies import helpers
 import betbot_db
 
 # Set up logging
-logger = logging.getLogger('sss.OrderManager')
+logger = logging.getLogger('ORDEM')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
+formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -23,7 +23,7 @@ logger.addHandler(ch)
 class OrderManager(threading.Thread):
     def __init__(self, api):
         threading.Thread.__init__(self)
-        self.logger = logging.getLogger('sss.OrderManager')
+        self.logger = logging.getLogger('ORDEM')
         self.api = api
 
     def run(self):

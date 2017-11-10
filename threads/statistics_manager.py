@@ -8,11 +8,11 @@ import betbot_db
 from strategies import helpers
 
 # Set up logging
-logger = logging.getLogger('sss.StatisticsManager')
+logger = logging.getLogger('STATM')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
+formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -22,7 +22,7 @@ logger.addHandler(ch)
 class StatisticsManager(threading.Thread):
     def __init__(self, api):
         threading.Thread.__init__(self)
-        self.logger = logging.getLogger('sss.StatisticsManager')
+        self.logger = logging.getLogger('STATM')
         self.api = api
 
     def run(self):

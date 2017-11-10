@@ -6,11 +6,11 @@ from time import sleep
 import betbot_db
 
 # Set up logging
-logger = logging.getLogger('sss.AccountManager')
+logger = logging.getLogger('ACCOM')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
+formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -19,7 +19,7 @@ logger.addHandler(ch)
 class AccountManager(threading.Thread):
     def __init__(self, api):
         threading.Thread.__init__(self)
-        self.logger = logging.getLogger('sss.AccountManager')
+        self.logger = logging.getLogger('ACCOM')
         self.api = api
 
     def run(self):

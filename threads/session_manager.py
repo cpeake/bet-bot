@@ -4,11 +4,11 @@ import traceback
 from time import sleep
 
 # Set up logging
-logger = logging.getLogger('sss.SessionManager')
+logger = logging.getLogger('SESSM')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
+formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -18,7 +18,7 @@ logger.addHandler(ch)
 class SessionManager(threading.Thread):
     def __init__(self, api, username='', password='', app_key=''):
         threading.Thread.__init__(self)
-        self.logger = logging.getLogger('sss.SessionManager')
+        self.logger = logging.getLogger('SESSM')
         self.api = api
         self.username = username
         self.password = password

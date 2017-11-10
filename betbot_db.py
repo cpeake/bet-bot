@@ -74,9 +74,8 @@ class MarketRepository(object):
         }).sort([('marketStartTime', 1)]).next()
 
     def get_next(self):
-        todaySod = helpers.get_start_of_day()
         return db.markets.find({
-            'marketStartTime': {'$gt': todaySod}
+            'marketStartTime': {'$gt': datetime.utcnow()}
         }).sort([('marketStartTime', 1)]).next()
 
     def get_most_recently_played(self):
@@ -93,9 +92,10 @@ class MarketBookRepository(object):
     def insert(self, market_book=None):
         if market_book:
             # convert datetime strings to proper date times for storing as ISODate
-            last_match_time = market_book['lastMatchTime']
-            if last_match_time and type(last_match_time) is str:
-                market_book['lastMatchTime'] = dateutil.parser.parse(last_match_time)
+            if 'lastMatchTime' in market_book:
+                last_match_time = market_book['lastMatchTime']
+                if last_match_time and type(last_match_time) is str:
+                    market_book['lastMatchTime'] = dateutil.parser.parse(last_match_time)
             # add a snapshot datetime
             market_book['snapshotTime'] = datetime.utcnow()
             db.market_books.insert_one(market_book)
@@ -157,10 +157,6 @@ class InstructionRepository(object):
         bets = []
         for bet in db.instructions.find({"settled": False, "live": {"$in": [True, None]}}):
             bets.append(bet)
-        if len(bets) == 0:
-            self.logger.debug('No active instructions to check.')
-        else:
-            self.logger.debug('Found %s active instructions to check.' % len(bets))
         return bets
 
     def get_active_simulated(self):
@@ -168,10 +164,6 @@ class InstructionRepository(object):
         bets = []
         for bet in db.instructions.find({"settled": False, "live": False}):
             bets.append(bet)
-        if len(bets) == 0:
-            self.logger.debug('No active SIMULATED instructions to check.')
-        else:
-            self.logger.debug('Found %s SIMULATED active instructions to check.' % len(bets))
         return bets
 
     def set_settled(self, cleared_orders=None):
