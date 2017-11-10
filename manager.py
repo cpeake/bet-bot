@@ -43,14 +43,15 @@ session_manager.start()
 sleep(5)  # Allow the session manager time to log in.
 
 market_manager = threads.MarketManager(api)
+market_book_manager = threads.MarketBookManager(api)
 statistics_manager = threads.StatisticsManager(api)
 account_manager = threads.AccountManager(api)
-strategy_manager = threads.StrategyManager(api, LIVE_MODE)
 order_manager = threads.OrderManager(api)
+#strategy_manager = threads.StrategyManager(api, LIVE_MODE)
 
 market_manager.start()
+market_book_manager.start()
 statistics_manager.start()
 account_manager.start()
-strategy_manager.start()
 order_manager.start()
-
+#strategy_manager.start()

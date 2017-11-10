@@ -349,6 +349,14 @@ class API(object):
         else:
             raise Exception(str(resp))
 
+    def get_market_book(self, market_id=''):
+        books = self.get_market_books([market_id])
+        if type(books) is list:
+            return books[0]
+        else:
+            msg = 'Failed to get market book: resp = %s' % books
+            raise Exception(msg)
+
     def get_runner_book(self, market_id='', selection_id='', req_id=1):
         url = 'https://api.betfair.com/exchange/betting/json-rpc/v1'
         params = {}

@@ -69,9 +69,14 @@ class MarketRepository(object):
 
     def get_next_playable(self):
         """returns the next playable market"""
-        self.logger.debug('Finding next playable market.')
         return db.markets.find({
             "played": {"$exists": False}
+        }).sort([('marketStartTime', 1)]).next()
+
+    def get_next(self):
+        todaySod = helpers.get_start_of_day()
+        return db.markets.find({
+            'marketStartTime': {'$gt': todaySod}
         }).sort([('marketStartTime', 1)]).next()
 
     def get_most_recently_played(self):
