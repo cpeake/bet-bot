@@ -38,8 +38,13 @@ class MarketRepository(object):
                 market['marketStartTime'] = dateutil.parser.parse(market_start_time)
             if open_date and type(open_date) is str:
                 market['event']['openDate'] = dateutil.parser.parse(open_date)
+            # Pull out the runners and upsert separately.
+            runners = market.pop('runners', None)
             key = {'marketId': market['marketId']}
             db.markets.update(key, market, upsert=True)
+            if runners and type(runners) is list:
+                for runner in runners:
+                    runner_repo.upsert(runner)
         else:
             msg = 'Failed to upsert a market, None provided.'
             raise Exception(msg)
@@ -74,12 +79,15 @@ class MarketRepository(object):
         }).sort([('marketStartTime', 1)]).next()
 
     def get_next(self):
-        return db.markets.find({
+        future_markets = db.markets.find({
             'marketStartTime': {'$gt': datetime.utcnow()}
-        }).sort([('marketStartTime', 1)]).next()
+        }).sort([('marketStartTime', 1)])
+        if future_markets.count() > 0:
+            return future_markets.next()
+        else:
+            return None
 
     def get_most_recently_played(self):
-        self.logger.debug('Finding most recently played market.')
         return db.markets.find({
             "played": {"$exists": True}
         }).sort([('marketStartTime', -1)]).next()
@@ -119,6 +127,22 @@ class RunnerBookRepository(object):
         else:
             msg = 'Failed to upsert a runner book, None provided.'
             raise Exception(msg)
+
+
+class RunnerRepository(object):
+    def __init__(self):
+        self.logger = logging.getLogger('betbot_application.betbot_db.RunnerRepository')
+
+    def upsert(self, runner=None):
+        if runner:
+            # Remove unnecessary keys if they exist.
+            runner.pop('handicap', None)
+            runner.pop('sortPriority', None)
+            key = {'selectionId': runner['selectionId']}
+            db.runners.update(key, runner, upsert=True)
+
+    def get_by_id(self, selection_id=''):
+        return db.runners.find_one({'selectionId': selection_id})
 
 
 class InstructionRepository(object):
@@ -335,6 +359,7 @@ class AccountFundsRepository(object):
 
 
 market_repo = MarketRepository()
+runner_repo = RunnerRepository()
 market_book_repo = MarketBookRepository()
 runner_book_repo = RunnerBookRepository()
 instruction_repo = InstructionRepository()

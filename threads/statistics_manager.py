@@ -43,7 +43,6 @@ class StatisticsManager(threading.Thread):
                     statistic['monthlyPnL'] = mtd_pnls[strategy_ref] if strategy_ref in mtd_pnls else 0
                     statistic['yearlyPnL'] = ytd_pnls[strategy_ref] if strategy_ref in ytd_pnls else 0
                     statistic['lifetimePnL'] = lifetime_pnls[strategy_ref] if strategy_ref in lifetime_pnls else 0
-                    self.logger.debug(statistic)
                     betbot_db.statistic_repo.upsert(statistic)
 
                 now = time()

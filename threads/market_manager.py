@@ -38,11 +38,11 @@ class MarketManager(threading.Thread):
                            'eventTypeIds': ['7'],  # horse racing
                            'marketTypeCodes': ['WIN'],
                            'marketBettingTypes': ['ODDS'],
-                           'marketCountries': ['GB'],  # UK markets
+                           'marketCountries': ['GB', 'IE'],  # UK markets
                            'turnInPlayEnabled': True,  # will go in-play
                            'inPlayOnly': False  # market NOT currently in-play
                        },
-                       'marketProjection': ['EVENT', 'MARKET_START_TIME'],
+                       'marketProjection': ['EVENT', 'RUNNER_DESCRIPTION', 'MARKET_START_TIME'],
                        'maxResults': 1000,  # maximum allowed by Betfair
                        'sort': 'FIRST_TO_START'  # order so the next market by start time comes first
                     }

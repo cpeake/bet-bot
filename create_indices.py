@@ -52,6 +52,9 @@ market_book_indices = db.market_books.index_information()
 if not index_exists('marketId', market_book_indices):
     db.market_books.create_index([('marketId', pymongo.DESCENDING)], name='marketId')
 
+if not index_exists('snapshotTime', market_book_indices):
+    db.market_books.create_index([('snapshotTime', pymongo.DESCENDING)], name='snapshotId')
+
 # Create indices on collection 'runner_books'
 
 runner_book_indices = db.runner_books.index_information()
@@ -90,3 +93,10 @@ if not index_exists('customerStrategyRef', order_indices):
 
 if not index_exists('profit', order_indices):
     db.orders.create_index([('profit', pymongo.ASCENDING)], name='profit')
+
+# Create indices on colection 'runners'
+
+runner_indices = db.runners.index_information()
+
+if not index_exists('selectionId', runner_indices):
+    db.runners.create_index([('selectionId', pymongo.DESCENDING)], name='selectionId')
