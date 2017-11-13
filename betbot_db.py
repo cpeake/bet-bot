@@ -84,6 +84,7 @@ class MarketRepository(object):
         future_markets = db.markets.find({
             'marketStartTime': {'$gt': datetime.utcnow()}
         }).sort([('marketStartTime', 1)])
+        self.logger.debug('Found %s future markets.' % future_markets.count())
         if future_markets.count() > 0:
             next_market = future_markets.next()
             market_start_time = next_market['marketStartTime']

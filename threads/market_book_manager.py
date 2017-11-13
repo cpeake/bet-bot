@@ -48,7 +48,7 @@ class MarketBookManager(threading.Thread):
         while True:
             try:
                 next_markets = betbot_db.market_repo.get_next()
-                if len(next_markets) > 0:
+                if next_markets and len(next_markets) > 0:
                     now = datetime.utcnow()
                     start_time = next_markets[0]['marketStartTime']
                     delta = (start_time - now).total_seconds()
