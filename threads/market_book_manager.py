@@ -53,11 +53,12 @@ class MarketBookManager(threading.Thread):
                     start_time = next_markets[0]['marketStartTime']
                     delta = (start_time - now).total_seconds()
                     if delta < 70:  # Market is going to start within 60 seconds.
-                        for market in next_markets:
-                            thread_name = 'MBW-%s' % market['marketId']
-                            mbw = threading.Thread(target=self.watch_market_book, name=thread_name, args=market)
-                            mbw.start()
-                        sleep(2 * 60)  # Until after the market start time has passed.
+                        #for market in next_markets:
+                        #    thread_name = 'MBW-%s' % market['marketId']
+                        #    mbw = threading.Thread(target=self.watch_market_book, name=thread_name, args=market)
+                        #    mbw.start()
+                        #sleep(2 * 60)  # Until after the market start time has passed.
+                        self.watch_market_book(next_markets[0])
                     else:  # Start counting down towards the next market.
                         if delta < 120:
                             self.logger.debug('%s seconds until next market(s).' % format(delta, '.0f'))
