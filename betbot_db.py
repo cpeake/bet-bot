@@ -79,11 +79,18 @@ class MarketRepository(object):
         }).sort([('marketStartTime', 1)]).next()
 
     def get_next(self):
+        # Gets the next market(s) by time. If there are two markets starting at exactly the
+        # same time, both are returned.
         future_markets = db.markets.find({
             'marketStartTime': {'$gt': datetime.utcnow()}
         }).sort([('marketStartTime', 1)])
         if future_markets.count() > 0:
-            return future_markets.next()
+            next_market = future_markets.next()
+            market_start_time = next_market['marketStartTime']
+            next_markets = []
+            for market in db.markets.find({'marketStartTime': market_start_time}):
+                next_markets.append(market)
+            return next_markets
         else:
             return None
 
