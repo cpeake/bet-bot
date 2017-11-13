@@ -350,7 +350,7 @@ class API(object):
             raise Exception(str(resp))
 
     def get_market_book(self, market_id=''):
-        books = self.get_market_books([market_id])
+        books = self.get_market_books([market_id], ['EX_ALL_OFFERS'])
         if type(books) is list:
             return books[0]
         else:
