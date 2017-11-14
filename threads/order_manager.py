@@ -32,7 +32,7 @@ class OrderManager(threading.Thread):
             try:
                 self.process_live_instructions()
                 self.process_simulated_instructions()
-                sleep(1 * 60)
+                sleep(20)
             except Exception as exc:
                 msg = traceback.format_exc()
                 http_err = 'ConnectionError:'
