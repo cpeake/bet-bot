@@ -19,6 +19,8 @@ logger.addHandler(ch)
 USERNAME = os.environ['BETFAIR_USERNAME']
 PASSWORD = os.environ['BETFAIR_PASSWORD']
 APP_KEY = os.environ['BETFAIR_APP_KEY']
+
+# Retrieve live mode status from the environment
 LIVE_MODE = 'LIVE_MODE' in os.environ and os.environ['LIVE_MODE'] == 'true'
 
 if not USERNAME:
@@ -32,8 +34,6 @@ if not PASSWORD:
 if not APP_KEY:
     logger.error('BETFAIR_APP_KEY is not set, exiting.')
     exit()
-
-EXIT_ON_ERROR = False  # set to False when bot is ready to run 24/7
 
 api = API(False, ssl_prefix=USERNAME)
 session_manager = threads.SessionManager(api, USERNAME, PASSWORD, APP_KEY)
