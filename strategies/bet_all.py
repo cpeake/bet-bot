@@ -122,4 +122,7 @@ class BetAllStrategy(object):
                         'timeInForce': 'FILL_OR_KILL'
                     }}
                 bets.append(new_bet)
+        else:
+            msg = 'Failed to create bets for strategy %s, no market/book provided' % self.reference
+            raise Exception(msg)
         return bets

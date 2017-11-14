@@ -77,6 +77,6 @@ class LayAllStrategy(object):
                 }}
             bets.append(new_bet)
         else:
-            msg = 'Failed to create bets for strategy %s, no market provided' % self.reference
+            msg = 'Failed to create bets for strategy %s, no market/book provided' % self.reference
             raise Exception(msg)
         return bets

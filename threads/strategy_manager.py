@@ -44,7 +44,7 @@ class StrategyManager(threading.Thread):
                         self.logger.warning(msg)
                         betbot_db.market_repo.set_skipped(next_market, 'MARKET_IN_PAST')
                     else:
-                        if wait < 60:  # Process the next market, less than a minute to go before start!
+                        if wait < 30:  # Process the next market, less than a minute to go before start!
                             strategy_bets = self.create_bets(next_market)
                             if strategy_bets:
                                 self.logger.info('Generated bets on %s %s.' % (venue, name))
@@ -54,8 +54,8 @@ class StrategyManager(threading.Thread):
                                 self.logger.info('No bets generated on %s %s, skipping.')
                                 betbot_db.market_repo.set_skipped(next_market, 'NO_BETS_CREATED')
                         else:  # wait until a minute before the next market is due to start
-                            self.logger.info("Sleeping until 1 minute before %s %s starts." % (venue, name))
-                            sleep(wait - 60)
+                            self.logger.info("Sleeping until 30 seconds before %s %s starts." % (venue, name))
+                            sleep(wait - 30)
                 else:  # No active markets so sleep to save CPU until some new markets appear.
                     sleep(1 * 60)
             except Exception as exc:
@@ -70,7 +70,7 @@ class StrategyManager(threading.Thread):
         market_book = betbot_db.market_book_repo.get_latest_snapshot(market['marketId'])
         return {
             self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
-            # self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
+            self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
         }
 
     def place_bets(self, market=None, market_bets=None):

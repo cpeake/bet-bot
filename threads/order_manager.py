@@ -69,13 +69,18 @@ class OrderManager(threading.Thread):
                 strategy_ref = instruction['strategyRef']
                 runner_book = self.api.get_runner_book(market_id, selection_id)
                 runner_status = runner_book['runners'][0]['status']
-                bet_outcome = None
-                if runner_status == 'LOSER':
-                    bet_outcome = 'LOST'
-                if runner_status == 'WINNER':
-                    bet_outcome = 'WON'
-                self.logger.debug(instruction)
                 side = instruction['instruction']['side']
+                bet_outcome = None
+                if side == 'BACK':
+                    if runner_status == 'LOSER':
+                        bet_outcome = 'LOST'
+                    if runner_status == 'WINNER':
+                        bet_outcome = 'WON'
+                else:  # LAY
+                    if runner_status == 'LOSER':
+                        bet_outcome = 'WON'
+                    if runner_status == 'WINNER':
+                        bet_outcome = 'LOST'
                 order = {
                     'marketId': market_id,
                     'selectionId': selection_id,
@@ -112,7 +117,7 @@ class OrderManager(threading.Thread):
             if bet_outcome == 'WON':
                 return size * (price - 1)
             else:  # LOST
-                return size
+                return size * -1.0
         else:  # side == 'LAY'
             factor = 1.0 if bet_outcome == 'WON' else -1.0
             return size * (price - 1.0) * factor

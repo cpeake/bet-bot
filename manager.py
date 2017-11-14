@@ -20,7 +20,7 @@ USERNAME = os.environ['BETFAIR_USERNAME']
 PASSWORD = os.environ['BETFAIR_PASSWORD']
 APP_KEY = os.environ['BETFAIR_APP_KEY']
 
-# Retrieve live mode status from the environment
+# Retrieve live mode status from the environment (defaults to False)
 LIVE_MODE = 'LIVE_MODE' in os.environ and os.environ['LIVE_MODE'] == 'true'
 
 if not USERNAME:
