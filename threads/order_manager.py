@@ -75,13 +75,14 @@ class OrderManager(threading.Thread):
                 if runner_status == 'WINNER':
                     bet_outcome = 'WON'
                 self.logger.debug(instruction)
+                side = instruction['instruction']['side']
                 order = {
                     'marketId': market_id,
                     'selectionId': selection_id,
                     'eventTypeId': 7,
                     'betId': instruction['betId'],
                     'orderType': instruction['instruction']['orderType'],
-                    'side': instruction['instruction']['side'],
+                    'side': side,
                     'placedDate': instruction['placedDate'],
                     'itemDescription': {
                         'eventDesc': market_id,
@@ -91,21 +92,30 @@ class OrderManager(threading.Thread):
                     'customerStrategyRef': strategy_ref,
                     'simulated': True
                 }
-                if not runner_book['status'] == 'CLOSED':
-                    if 'lastPriceTraded' in runner_book['runners'][0]:
-                        # Add the last known price.
-                        order['priceMatched'] = runner_book['runners'][0]['lastPriceTraded']
                 if bet_outcome:
+                    size = instruction['instruction']['limitOrder']['size']
+                    price = instruction['instruction']['limitOrder']['price']
                     order['betOutcome'] = bet_outcome
                     order['settledDate'] = datetime.utcnow()
-                    order['sizeSettled'] = instruction['instruction']['marketOnCloseOrder']['liability']
-                    order['priceMatched'] = 2.5  # TODO: Calculate most accurate price possible
-                    profit = 10  # TODO: Calculate actual P&L
-                    order['profit'] = profit
+                    order['sizeSettled'] = size
+                    order['priceMatched'] = price
+                    order['profit'] = self.calculate_profit(side, size, price, bet_outcome)
                 betbot_db.order_repo.upsert([order])
                 if 'settledDate' in order:
                     betbot_db.instruction_repo.set_settled([order])
                     self.delta_update_statistics([order])
+
+    # TODO: Check calculation for LAY profit/loss
+    # TODO: Factor in Betfair commission including point reduction
+    def calculate_profit(self, side='', size=0.0, price=0.0, bet_outcome=''):
+        if side == 'BACK':
+            if bet_outcome == 'WON':
+                return size * (price - 1)
+            else:  # LOST
+                return size
+        else:  # side == 'LAY'
+            factor = 1.0 if bet_outcome == 'WON' else -1.0
+            return size * (price - 1.0) * factor
 
     def delta_update_statistics(self, cleared_orders):
         self.logger.info('Doing a delta strategy statistics update.')
