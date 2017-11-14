@@ -70,7 +70,7 @@ class StrategyManager(threading.Thread):
         market_book = betbot_db.market_book_repo.get_latest_snapshot(market['marketId'])
         return {
             self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
-            self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
+            # self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
         }
 
     def place_bets(self, market=None, market_bets=None):
