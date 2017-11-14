@@ -21,7 +21,7 @@ module_logger.info('Connected to MongoDB: %s' % db)
 
 class MarketRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.MarketRepository')
+        self.logger = logging.getLogger('MARDB')
 
     def get_by_id(self, market_id=''):
         self.logger.debug('Retrieving market %s' % market_id)
@@ -84,7 +84,6 @@ class MarketRepository(object):
         future_markets = db.markets.find({
             'marketStartTime': {'$gt': datetime.utcnow()}
         }).sort([('marketStartTime', 1)])
-        self.logger.debug('Found %s future markets.' % future_markets.count())
         if future_markets.count() > 0:
             next_market = future_markets.next()
             market_start_time = next_market['marketStartTime']
@@ -103,7 +102,7 @@ class MarketRepository(object):
 
 class MarketBookRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.MarketBookRepository')
+        self.logger = logging.getLogger('MABDB')
 
     def get_latest_snapshot(self, market_id=''):
         market_books = db.market_books.find({
@@ -131,7 +130,7 @@ class MarketBookRepository(object):
 
 class RunnerBookRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.RunnerBookRepository')
+        self.logger = logging.getLogger('RUBDB')
 
     def upsert(self, runner_book=None):
         if runner_book:
@@ -148,7 +147,7 @@ class RunnerBookRepository(object):
 
 class RunnerRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.RunnerRepository')
+        self.logger = logging.getLogger('RUNDB')
 
     def upsert(self, runner=None):
         if runner:
@@ -164,7 +163,7 @@ class RunnerRepository(object):
 
 class InstructionRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.InstructionRepository')
+        self.logger = logging.getLogger('INSDB')
 
     def get_by_id(self, bet_id=''):
         self.logger.debug('Retrieving instruction %s' % bet_id)
@@ -224,7 +223,7 @@ class InstructionRepository(object):
 
 class OrderRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.OrderRepository')
+        self.logger = logging.getLogger('ORDDB')
 
     def upsert(self, order_list=None):
         if order_list is None:
@@ -318,7 +317,7 @@ class OrderRepository(object):
 
 class StrategyRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.StrategyRepository')
+        self.logger = logging.getLogger('STRDB')
 
     def get_by_reference(self, strategy_ref=''):
         self.logger.debug('Getting strategy with reference %s' % strategy_ref)
@@ -337,7 +336,7 @@ class StrategyRepository(object):
 
 class StatisticRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.StatisticsRepository')
+        self.logger = logging.getLogger('STADB')
 
     def get_all(self):
         return db.statistics.find({})
@@ -366,7 +365,7 @@ class StatisticRepository(object):
 
 class AccountFundsRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.betbot_db.AccountRepository')
+        self.logger = logging.getLogger('ACCDB')
 
     def upsert(self, account_funds=None):
         if account_funds:

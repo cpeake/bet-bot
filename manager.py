@@ -7,11 +7,11 @@ from time import sleep
 from betfair.api_ng import API
 
 # Set up logging
-logger = logging.getLogger('betbot_application')
+logger = logging.getLogger('MAIN')
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(levelname)s - %(message)s')
+formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
@@ -45,11 +45,11 @@ market_book_manager = threads.MarketBookManager(api)
 statistics_manager = threads.StatisticsManager(api)
 account_manager = threads.AccountManager(api)
 order_manager = threads.OrderManager(api)
-#strategy_manager = threads.StrategyManager(api, LIVE_MODE)
+strategy_manager = threads.StrategyManager(api, LIVE_MODE)
 
 market_manager.start()
 market_book_manager.start()
 statistics_manager.start()
 account_manager.start()
 order_manager.start()
-#strategy_manager.start()
+strategy_manager.start()
