@@ -53,19 +53,17 @@ class MarketBookManager(threading.Thread):
                     start_time = next_markets[0]['marketStartTime']
                     delta = (start_time - now).total_seconds()
                     if delta < 70:  # Market is going to start within 60 seconds.
-                        #for market in next_markets:
-                        #    thread_name = 'MBW-%s' % market['marketId']
-                        #    mbw = threading.Thread(target=self.watch_market_book, name=thread_name, args=market)
-                        #    mbw.start()
-                        #sleep(2 * 60)  # Until after the market start time has passed.
-                        self.watch_market_book(next_markets[0])
-                    else:  # Start counting down towards the next market.
-                        if delta < 120:
-                            self.logger.debug('%s seconds until next market(s).' % format(delta, '.0f'))
-                            sleep(10)
-                        else:
-                            self.logger.debug('%s minutes until next market(s).' % format(divmod(delta, 60)[0], '.0f'))
-                            sleep(60)
+                        for market in next_markets:
+                            thread_name = 'MBW-%s' % market['marketId']
+                            mbw = threading.Thread(target=self.watch_market_book, name=thread_name, args=(market, ))
+                            mbw.start()
+                        sleep(2 * 60)  # Until after the market start time has passed.
+                    elif delta <= (2 * 60):  # 2 minutes to go, count down every 10 seconds...
+                        self.logger.debug('%s seconds until next market(s).' % format(delta, '.0f'))
+                        sleep(10)
+                    else:  # >2 minutes to go, count down every 1 minute...
+                        self.logger.debug('%s minutes until next market(s).' % format(divmod(delta, 60)[0] + 1, '.0f'))
+                        sleep(10 * 60)
                 else:
                     self.logger.info('No next market(s) available.')
                     sleep(5 * 60)
