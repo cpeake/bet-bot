@@ -17,6 +17,7 @@ class BetAllStrategy(object):
         if not self.state:  # no state available, create an initial state
             self.state = betbot_db.strategy_repo.upsert({
                     'strategyRef': self.reference,
+                    'name': 'Bet All',
                     'stakeLadderPosition': 0,
                     'weightLadderPosition': 0,
                     'betsAtMaxStake': 0,
@@ -113,9 +114,12 @@ class BetAllStrategy(object):
                     'selectionId': runner['selectionId'],
                     'handicap': 0,
                     'side': 'BACK',
-                    'orderType': 'MARKET_ON_CLOSE',
-                    'marketOnCloseOrder': {
-                        'liability': stake * weight
+                    'orderType': 'LIMIT',
+                    'limitOrder': {
+                        'size': stake * weight,
+                        'price': helpers.get_back_limit_price(runner, stake * weight),
+                        'persistenceType': 'LAPSE',
+                        'timeInForce': 'FILL_OR_KILL'
                     }}
                 bets.append(new_bet)
         return bets

@@ -6,6 +6,15 @@ from datetime import datetime, timedelta
 module_logger = logging.getLogger('betbot_application.betbot_db')
 
 
+class MarketDepthError(Exception):
+    def __init__(self, depth=0.0, stake=0.0, msg=None):
+        if msg is None:
+            msg = "Insufficient market depth £%s found for stake £%s." % (depth, stake)
+        super(MarketDepthError, self).__init__(msg)
+        self.depth = depth
+        self.stake = stake
+
+
 def get_stake_by_ladder_position(position=0):
     return settings.stake_ladder[position] * settings.minimum_stake * settings.stake_multiplier
 
@@ -68,6 +77,35 @@ def get_favourite(market_book=None):
                     favourite = runner
                     best_price = runner['lastPriceTraded']
     return favourite
+
+
+def get_back_limit_price(runner=None, stake=0.0):
+    if runner:
+        market_levels = runner['ex']['availableToBack']
+        return get_limit_price(market_levels, stake)
+    else:
+        return 0.0
+
+
+def get_lay_limit_price(runner=None, stake=0.0):
+    if runner:
+        market_levels = runner['ex']['availableToLay']
+        return get_limit_price(market_levels, stake)
+    else:
+        return 0.0
+
+
+def get_limit_price(market_levels=None, stake=0.0):
+    if market_levels:
+        depth = 0.0
+        for market_level in market_levels:
+            depth += market_level['size']
+            if depth > stake:
+                return market_level['price']
+        msg = "Insufficient market depth found for a stake of £%s." % stake
+        raise MarketDepthError(depth, stake, msg)
+    else:
+        return 0.0
 
 
 def get_start_of_day():

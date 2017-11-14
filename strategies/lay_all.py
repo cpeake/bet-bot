@@ -17,7 +17,7 @@ class LayAllStrategy(object):
         if not self.state:  # no state available, create an initial state
             self.state = betbot_db.strategy_repo.upsert({
                 'strategyRef': self.reference,
-                'name': 'All Lay Strategy',
+                'name': 'Lay All',
                 'weightLadderPosition': 0,
                 'daysAtMaxWeight': 0,
                 'active': True,
@@ -68,9 +68,12 @@ class LayAllStrategy(object):
                 'selectionId': runner['selectionId'],
                 'handicap': 0,
                 'side': 'LAY',
-                'orderType': 'MARKET_ON_CLOSE',
-                'marketOnCloseOrder': {
-                    'liability': helpers.get_lay_liability(stake * weight, runner['lastPriceTraded'])
+                'orderType': 'LIMIT',
+                'limitOrder': {
+                    'size': stake * weight,
+                    'price': helpers.get_lay_limit_price(runner, stake * weight),
+                    'persistenceType': 'LAPSE',
+                    'timeInForce': 'FILL_OR_KILL'
                 }}
             bets.append(new_bet)
         else:
