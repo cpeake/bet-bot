@@ -67,11 +67,10 @@ class StrategyManager(threading.Thread):
                 sleep(1 * 60)
 
     def create_bets(self, market=None):
-        market_book = self.get_market_book(market)
+        market_book = betbot_db.market_book_repo.get_latest_snapshot(market['marketId'])
         return {
             self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
-            # Lay All disabled for now due to £10 minimum liability on MARKET_ON_CLOSE orders.
-            # self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
+            self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
         }
 
     def place_bets(self, market=None, market_bets=None):
@@ -114,6 +113,8 @@ class StrategyManager(threading.Thread):
                     'instruction': strategy_bet,
                     'placedDate': datetime.utcnow(),
                     'betId': '%s-%s-%s' % (strategy_ref, market['marketId'], strategy_bet['selectionId']),
+                    'averagePriceMatched': strategy_bet['limitOrder']['price'],
+                    'sizeMatched': strategy_bet['limitOrder']['size'],
                     'marketId': market['marketId'],
                     'marketStartTime': market['marketStartTime'],
                     'strategyRef': strategy_ref,
@@ -121,12 +122,3 @@ class StrategyManager(threading.Thread):
                 }
                 resp['instructionReports'].append(instruction_report)
         return resp
-
-    def get_market_book(self, market=None):
-        books = self.api.get_market_books([market['marketId']])
-        if type(books) is list:
-            betbot_db.market_book_repo.insert(books[0])
-            return books[0]
-        else:
-            msg = 'Failed to get market book: resp = %s' % books
-            raise Exception(msg)

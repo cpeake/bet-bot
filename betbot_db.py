@@ -105,6 +105,15 @@ class MarketBookRepository(object):
     def __init__(self):
         self.logger = logging.getLogger('betbot_application.betbot_db.MarketBookRepository')
 
+    def get_latest_snapshot(self, market_id=''):
+        market_books = db.market_books.find({
+            "marketId": market_id
+        }).sort([("snapshotTime", -1)])
+        if market_books.count() > 0:
+            return market_books.next()
+        else:
+            return None
+
     def insert(self, market_book=None):
         if market_book:
             # convert datetime strings to proper date times for storing as ISODate
