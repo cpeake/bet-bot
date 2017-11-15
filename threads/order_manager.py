@@ -113,14 +113,16 @@ class OrderManager(threading.Thread):
     # TODO: Check calculation for LAY profit/loss
     # TODO: Factor in Betfair commission including point reduction
     def calculate_profit(self, side='', size=0.0, price=0.0, bet_outcome=''):
-        if side == 'BACK':
+        if side == "BACK":
             if bet_outcome == 'WON':
-                return size * (price - 1)
+                return size * (price - 1.0)
             else:  # LOST
                 return size * -1.0
         else:  # side == 'LAY'
-            factor = 1.0 if bet_outcome == 'WON' else -1.0
-            return size * (price - 1.0) * factor
+            if bet_outcome == 'WON':
+                return size
+            else:
+                return size * price * -1
 
     def delta_update_statistics(self, cleared_orders):
         self.logger.info('Doing a delta strategy statistics update.')
