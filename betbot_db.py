@@ -232,7 +232,9 @@ class OrderRepository(object):
         for order in order_list:
             self.logger.debug(order)
             # convert date strings to datetimes (ISODates in MongoDB)
-            placed_date = order['placedDate']
+            placed_date = None
+            if 'placedDate' in order:
+                placed_date = order['placedDate']
             market_start_time = None
             if 'itemDescription' in order:
                 market_start_time = order['itemDescription']['marketStartTime']
