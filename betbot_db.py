@@ -122,7 +122,7 @@ class MarketRepository(object):
         if markets.count() > 0:
             market = markets.next()
             self.logger.debug("Found most recently played market: %s" % market)
-            return markets.next()
+            return market
         else:
             self.logger.debug("No most recently played market found.")
             return None
