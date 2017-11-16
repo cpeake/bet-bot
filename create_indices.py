@@ -33,8 +33,9 @@ module_logger.info('Connected to MongoDB: %s' % db)
 
 market_indices = db.markets.index_information()
 
-if not index_exists('marketId', market_indices):
-    db.markets.create_index([('marketId', pymongo.DESCENDING)], name='marketId')
+if index_exists('marketId', market_indices):
+    db.markets.drop_index('marketId')
+db.markets.create_index([('marketId', pymongo.DESCENDING)], name='marketId', unique=True)
 
 if not index_exists('marketStartTime', market_indices):
     db.markets.create_index([('marketStartTime', pymongo.DESCENDING)], name='marketStartTime')
@@ -69,8 +70,9 @@ instruction_indices = db.instructions.index_information()
 if not index_exists('marketId', instruction_indices):
     db.instructions.create_index([('marketId', pymongo.DESCENDING)], name='marketId')
 
-if not index_exists('betId', instruction_indices):
-    db.instructions.create_index([('betId', pymongo.DESCENDING)], name='betId')
+if index_exists('betId', instruction_indices):
+    db.instructions.drop_index('betId')
+db.instructions.create_index([('betId', pymongo.DESCENDING)], name='betId', unique=True)
 
 # Create indices on collection 'orders'
 
@@ -98,5 +100,6 @@ if not index_exists('profit', order_indices):
 
 runner_indices = db.runners.index_information()
 
-if not index_exists('selectionId', runner_indices):
-    db.runners.create_index([('selectionId', pymongo.DESCENDING)], name='selectionId')
+if index_exists('selectionId', runner_indices):
+    db.runners.drop_index('selectionId')
+db.runners.create_index([('selectionId', pymongo.DESCENDING)], name='selectionId', unique=True)
