@@ -67,5 +67,8 @@ class MarketManager(threading.Thread):
     @staticmethod
     def market_recently_played():
         last_market = betbot_db.market_repo.get_most_recently_played()
-        now = time()
-        return now - last_market['marketStartTime'].timestamp() < 60  # seconds
+        if last_market:
+            now = time()
+            return now - last_market['marketStartTime'].timestamp() < 60  # seconds
+        else:
+            return False
