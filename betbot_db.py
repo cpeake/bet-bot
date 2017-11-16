@@ -153,7 +153,6 @@ class MarketBookRepository(object):
                     market_book['lastMatchTime'] = dateutil.parser.parse(last_match_time)
             # add a snapshot datetime
             market_book['snapshotTime'] = datetime.utcnow()
-            self.logger.debug("Inserting market book: %s" % market_book)
             db.market_books.insert_one(market_book)
         else:
             msg = 'Failed to insert a market book, None provided.'
