@@ -4,10 +4,19 @@ import settings
 from datetime import datetime
 from strategies import helpers
 
+# Set up logging
+logger = logging.getLogger('ALS1')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('(%(name)s) - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
 
 class LayAllStrategy(object):
     def __init__(self):
-        self.logger = logging.getLogger('betbot_application.strategies.LayAllStrategy')
+        self.logger = logging.getLogger('ALS1')
         self.state = None
         self.reference = 'ALS1'
         self.init_state()
@@ -24,10 +33,6 @@ class LayAllStrategy(object):
                 'updatedDate': datetime.utcnow()
             })
 
-    def strategy_log(self, msg=''):
-        msg = ('[%s] ' % self.reference) + msg
-        self.logger.info(msg)
-
     # Updates the state of the strategy prior to the next (or first) bet being placed.
     # Once a day: If this is the first day of trading or the strategy generated a profit on the previous day,
     #             reset stake weighting to the start of the ladder and days at maximum weight to 0.
@@ -37,23 +42,23 @@ class LayAllStrategy(object):
     #             weight by 1.
     def update_state(self):
         if self.state['updatedDate'] < helpers.get_start_of_day():
-            self.strategy_log('Updating state at beginning of new day.')
+            self.logger.info('Updating state at beginning of new day.')
             if helpers.strategy_won_yesterday(self.reference):
-                self.strategy_log('Won yesterday.')
+                self.logger.info('Won yesterday.')
                 self.state['weightLadderPosition'] = 0
                 weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
-                self.strategy_log('Reset weighting to %sx.' % weight)
+                self.logger.info('Reset weighting to %sx.' % weight)
                 self.state['daysAtMaxWeight'] = 0
-                self.strategy_log('Reset days at maximum weight to 0.')
+                self.logger.info('Reset days at maximum weight to 0.')
             else:
-                self.strategy_log('Lost yesterday.')
+                self.logger.info('Lost yesterday.')
                 if self.state['weightLadderPosition'] < (len(settings.stake_ladder) - 1):
                     self.state['weightLadderPosition'] += 1
                     weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
-                    self.strategy_log('Incremented weighting to %sx.' % weight)
+                    self.logger.info('Incremented weighting to %sx.' % weight)
                 else:
                     self.state['daysAtMaxWeight'] += 1
-                    self.strategy_log('Incremented days at maximum weight to %s.' % self.state['daysAtMaxWeight'])
+                    self.logger.info('Incremented days at maximum weight to %s.' % self.state['daysAtMaxWeight'])
             betbot_db.strategy_repo.upsert(self.state)
 
     # Creates a LAY bet on the race favourite at a stake weighted by the daily weighting.
