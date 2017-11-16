@@ -98,11 +98,6 @@ class BetAllStrategy(object):
                         self.state['stakeLadderPosition'] = 0
                         self.state['betsAtMaxStake'] = 0
                         self.logger.info('Previous bet was at maximum stake, reset stake ladder.')
-                        # Strategy changed to reset stake ladder rather than trigger a stop loss.
-                        # self.state['stopLoss'] = True
-                        # msg = ''Stop loss triggered, %s race(s) lost at maximum stake.' %
-                        # self.state['betsAtMaxStake']'
-                        # self.logger.info(msg)
         betbot_db.strategy_repo.upsert(self.state)
 
     def create_bets(self, market=None, market_book=None):
