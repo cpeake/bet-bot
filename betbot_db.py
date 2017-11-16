@@ -6,22 +6,29 @@ from datetime import datetime, timedelta
 from pymongo import MongoClient
 from strategies import helpers
 
-module_logger = logging.getLogger('betbot_application.betbot_db')
+# Set up logging
+logger = logging.getLogger('BBDB')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('(%(name)s) - %(message)s')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
 MONGODB_URI = os.environ['MONGODB_URI']
 
 if not MONGODB_URI:
-    module_logger.error('MONGODB_URI is not set, exiting.')
+    logger.error('MONGODB_URI is not set, exiting.')
     exit()
 
 # Connect to MongoDB
 db = MongoClient(MONGODB_URI).get_database()
-module_logger.info('Connected to MongoDB: %s' % db)
+logger.info('Connected to MongoDB: %s' % db)
 
 
 class MarketRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('MARDB')
+        self.logger = logging.getLogger('BBDB')
 
     def get_by_id(self, market_id=''):
         self.logger.debug('Retrieving market %s' % market_id)
@@ -41,6 +48,7 @@ class MarketRepository(object):
             # Pull out the runners and upsert separately.
             runners = market.pop('runners', None)
             key = {'marketId': market['marketId']}
+            self.logger.debug("Upserting market: %s" % market)
             db.markets.update(key, market, upsert=True)
             if runners and type(runners) is list:
                 for runner in runners:
@@ -53,6 +61,7 @@ class MarketRepository(object):
         """set the provided market as played (i.e. bets have been placed successfully)"""
         if market:
             market['played'] = True
+            self.logger.debug("Setting market played: %s" % market)
             self.upsert(market)
         else:
             msg = 'Failed to set a market as played, None provided.'
@@ -67,6 +76,7 @@ class MarketRepository(object):
             market['played'] = False
             if error_code:
                 market['errorCode'] = error_code
+            self.logger.debug("Setting market skipped: %s" % market)
             self.upsert(market)
         else:
             msg = 'Failed to set a market as played, None provided.'
@@ -74,13 +84,21 @@ class MarketRepository(object):
 
     def get_next_playable(self):
         """returns the next playable market"""
-        return db.markets.find({
+        self.logger.debug("Finding next playable market.")
+        markets = db.markets.find({
             "played": {"$exists": False}
-        }).sort([('marketStartTime', 1)]).next()
+        }).sort([('marketStartTime', 1)]).limit(1)
+        if markets.count() > 0:
+            market = markets.next()
+            self.logger.debug("Found next playable market: %s" % market)
+            return market
+        else:
+            return None
 
     def get_next(self):
         # Gets the next market(s) by time. If there are two markets starting at exactly the
         # same time, both are returned.
+        self.logger.debug("Finding next market by start time.")
         future_markets = db.markets.find({
             'marketStartTime': {'$gt': datetime.utcnow()}
         }).sort([('marketStartTime', 1)])
@@ -90,26 +108,39 @@ class MarketRepository(object):
             next_markets = []
             for market in db.markets.find({'marketStartTime': market_start_time}):
                 next_markets.append(market)
+            self.logger.debug("Found next market: %s" % next_markets)
             return next_markets
         else:
+            self.logger.debug("No next market found.")
             return None
 
     def get_most_recently_played(self):
-        return db.markets.find({
+        self.logger.debug("Finding most recently played market.")
+        markets = db.markets.find({
             "played": {"$exists": True}
-        }).sort([('marketStartTime', -1)]).next()
+        }).sort([('marketStartTime', -1)]).limit(1)
+        if markets.count() > 0:
+            market = markets.next()
+            self.logger.debug("Found most recently played market: %s" % market)
+            return markets.next()
+        else:
+            self.logger.debug("No most recently played market found.")
+            return None
 
 
 class MarketBookRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('MABDB')
+        self.logger = logging.getLogger('BBDB')
 
     def get_latest_snapshot(self, market_id=''):
+        self.logger.debug("Finding latest market book snapshot for market %s." % market_id)
         market_books = db.market_books.find({
             "marketId": market_id
         }).sort([("snapshotTime", -1)])
         if market_books.count() > 0:
-            return market_books.next()
+            market_book = market_books.next()
+            self.logger.debug("Found latest market book snapshot for market %s: %s" % (market_id, market_book))
+            return market_book
         else:
             return None
 
@@ -122,6 +153,7 @@ class MarketBookRepository(object):
                     market_book['lastMatchTime'] = dateutil.parser.parse(last_match_time)
             # add a snapshot datetime
             market_book['snapshotTime'] = datetime.utcnow()
+            self.logger.debug("Inserting market book: %s" % market_book)
             db.market_books.insert_one(market_book)
         else:
             msg = 'Failed to insert a market book, None provided.'
@@ -130,7 +162,7 @@ class MarketBookRepository(object):
 
 class RunnerBookRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('RUBDB')
+        self.logger = logging.getLogger('BBDB')
 
     def upsert(self, runner_book=None):
         if runner_book:
@@ -139,6 +171,7 @@ class RunnerBookRepository(object):
                 'marketId': runner_book['marketId'],
                 'selectionId': runner_book['selectionId']
             }
+            self.logger.debug("Upserting runner book: %s" % runner_book)
             db.markets.update(key, runner_book, upsert=True)
         else:
             msg = 'Failed to upsert a runner book, None provided.'
@@ -147,7 +180,7 @@ class RunnerBookRepository(object):
 
 class RunnerRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('RUNDB')
+        self.logger = logging.getLogger('BBDB')
 
     def upsert(self, runner=None):
         if runner:
@@ -155,19 +188,34 @@ class RunnerRepository(object):
             runner.pop('handicap', None)
             runner.pop('sortPriority', None)
             key = {'selectionId': runner['selectionId']}
+            self.logger.debug("Upserting runner: %s" % runner)
             db.runners.update(key, runner, upsert=True)
+        else:
+            msg = 'Failed to upsert a runner, None provided.'
+            raise Exception(msg)
 
     def get_by_id(self, selection_id=''):
-        return db.runners.find_one({'selectionId': selection_id})
+        runner = db.runners.find_one({'selectionId': selection_id})
+        if runner:
+            self.logger.debug("Found runner %s: %s" % (selection_id, runner))
+            return runner
+        else:
+            msg = 'Failed to find runner %s' % selection_id
+            raise Exception(msg)
 
 
 class InstructionRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('INSDB')
+        self.logger = logging.getLogger('BBDB')
 
     def get_by_id(self, bet_id=''):
-        self.logger.debug('Retrieving instruction %s' % bet_id)
-        return db.instructions.find_one({'betId': bet_id})
+        instruction = db.instructions.find_one({'betId': bet_id})
+        if instruction:
+            self.logger.debug('Found instruction %s: %s' % (bet_id, instruction))
+            return instruction
+        else:
+            msg = 'Failed to find instruction %s' % bet_id
+            raise Exception
 
     def insert(self, market=None, instruction=None):
         if market and instruction:
@@ -178,6 +226,7 @@ class InstructionRepository(object):
                 instruction['placedDate'] = dateutil.parser.parse(placed_date)
             instruction['marketId'] = market_id
             instruction['settled'] = False
+            self.logger.debug("Inserting instruction: %s" % instruction)
             db.instructions.insert_one(instruction)
         else:
             msg = 'Failed to insert an instruction, None provided.'
@@ -190,6 +239,7 @@ class InstructionRepository(object):
             if placed_date and type(placed_date) is str:
                 instruction['placedDate'] = dateutil.parser.parse(placed_date)
             key = {'betId': instruction['betId']}
+            self.logger.debug("Upserting instruction: %s" % instruction)
             db.instructions.update(key, instruction, upsert=True)
 
     def get_active(self):
@@ -197,6 +247,7 @@ class InstructionRepository(object):
         bets = []
         for bet in db.instructions.find({"settled": False, "live": {"$in": [True, None]}}):
             bets.append(bet)
+        self.logger.debug("Found active instructions: %s" % bets)
         return bets
 
     def get_active_simulated(self):
@@ -204,17 +255,19 @@ class InstructionRepository(object):
         bets = []
         for bet in db.instructions.find({"settled": False, "live": False}):
             bets.append(bet)
+        self.logger.debug("Found active SIMULATED instructions: %s" % bets)
         return bets
 
     def set_settled(self, cleared_orders=None):
         if cleared_orders is None:
             cleared_orders = []
+        self.logger.debug("Setting instructions for cleared orders as settled: %s" % cleared_orders)
         for order in cleared_orders:
             bet_id = order['betId']
-            self.logger.info('Marking instruction %s as settled.' % bet_id)
             instruction = self.get_by_id(bet_id)
             if instruction:
                 instruction['settled'] = True
+                self.logger.info('Marking instruction %s as settled: %s' % (bet_id, instruction))
                 self.upsert(instruction)
             else:
                 msg = 'Instruction %s not found.' % bet_id
@@ -223,14 +276,13 @@ class InstructionRepository(object):
 
 class OrderRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('ORDDB')
+        self.logger = logging.getLogger('BBDB')
 
     def upsert(self, order_list=None):
         if order_list is None:
             order_list = []
-        self.logger.debug('Upserting %s orders' % len(order_list))
+        self.logger.debug('Upserting %s orders.' % len(order_list))
         for order in order_list:
-            self.logger.debug(order)
             # convert date strings to datetimes (ISODates in MongoDB)
             placed_date = None
             if 'placedDate' in order:
@@ -253,6 +305,7 @@ class OrderRepository(object):
             if matched_date and type(matched_date) is str:
                 order['matchedDate'] = dateutil.parser.parse(matched_date)
             key = {'betId': order['betId']}
+            self.logger.debug("Upserting order: %s" % order)
             db.orders.update(key, order, upsert=True)
 
     def get_settled_yesterday_by_strategy(self, strategy_ref=''):
@@ -319,7 +372,7 @@ class OrderRepository(object):
 
 class StrategyRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('STRDB')
+        self.logger = logging.getLogger('BBDB')
 
     def get_by_reference(self, strategy_ref=''):
         self.logger.debug('Getting strategy with reference %s' % strategy_ref)
@@ -338,7 +391,7 @@ class StrategyRepository(object):
 
 class StatisticRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('STADB')
+        self.logger = logging.getLogger('BBDB')
 
     def get_all(self):
         return db.statistics.find({})
@@ -351,7 +404,7 @@ class StatisticRepository(object):
                 'dailyPnL': 0.0,
                 'weeklyPnL': 0.0,
                 'monthlyPnL': 0.0,
-                'ytdPnL': 0.0,
+                'yearlyPnL': 0.0,
                 'lifetimePnL': 0.0,
                 'updatedDate': datetime.utcnow()
             }
@@ -367,7 +420,7 @@ class StatisticRepository(object):
 
 class AccountFundsRepository(object):
     def __init__(self):
-        self.logger = logging.getLogger('ACCDB')
+        self.logger = logging.getLogger('BBDB')
 
     def upsert(self, account_funds=None):
         if account_funds:
