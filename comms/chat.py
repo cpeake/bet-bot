@@ -14,14 +14,16 @@ logger.addHandler(ch)
 slack_token = os.environ["SLACK_API_TOKEN"]
 channel = os.environ["SLACK_CHANNEL"]
 sc = SlackClient(slack_token)
+logger.info("Connected to Slack, posting to channel %s." % channel)
 
 
 class ChatManager(object):
     @staticmethod
     def post_message(msg=''):
         logger.info('Posted message "%s" to Slack channel %s.' % (msg, channel))
-        sc.api_call(
+        resp = sc.api_call(
           "chat.postMessage",
           channel=channel,
           text=msg
         )
+        logger.info(resp)
