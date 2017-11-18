@@ -6,6 +6,7 @@ from datetime import datetime
 
 import betbot_db
 import strategies
+from comms import ChatManager
 
 # Set up logging
 logger = logging.getLogger('STRAM')
@@ -83,6 +84,7 @@ class StrategyManager(threading.Thread):
                 if len(strategy_bets) > 0:
                     if self.live_mode and live_strategy:
                         resp = self.api.place_bets(market['marketId'], strategy_bets, strategy_ref)
+                        self.post_bets(market, strategy_bets, strategy_ref)
                     else:
                         resp = self.simulate_place_bets(market, strategy_bets, strategy_ref)
                     if type(resp) is dict and 'status' in resp:
@@ -122,3 +124,18 @@ class StrategyManager(threading.Thread):
                 }
                 resp['instructionReports'].append(instruction_report)
         return resp
+
+    def post_bets(self, market, strategy_bets=[], strategy_ref=''):
+        strategy = betbot_db.strategy_repo.get_by_reference(strategy_ref)
+        strategy_name = strategy['name']
+        venue = market['event']['venue']
+        market_name = market['marketName']
+        for strategy_bet in strategy_bets:
+            selection_id = strategy_bet['selectionId']
+            runner = betbot_db.runner_repo.get_by_id(selection_id)
+            runner_name = runner['runnerName']
+            price = strategy_bet['limitOrder']['price'],
+            size = strategy_bet['limitOrder']['size'],
+            msg = '%s placed an order on %s in the %s %s for %s @ %s.' %\
+                  (strategy_name, runner_name, venue, market_name, size, price)
+            ChatManager.post_message(msg)

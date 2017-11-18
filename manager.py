@@ -1,10 +1,12 @@
 """Betting Bot Manager"""
-import os
 import logging
-import threads
+import os
 from sys import exit
 from time import sleep
+
+import threads
 from betfair.api_ng import API
+from comms import ChatManager
 
 # Set up logging
 logger = logging.getLogger('MAIN')
@@ -53,3 +55,5 @@ statistics_manager.start()
 account_manager.start()
 order_manager.start()
 strategy_manager.start()
+
+ChatManager.post_message("BetBot started! :tada:")
