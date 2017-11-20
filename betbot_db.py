@@ -32,9 +32,11 @@ class MarketRepository(object):
 
     def get_by_id(self, market_id=''):
         self.logger.debug('Retrieving market %s' % market_id)
-        return db.markets.find_one({
+        market = db.markets.find_one({
             "marketId": market_id
         })
+        self.logger.debug('Found market %s: %s' % (market_id, market))
+        return market
 
     def upsert(self, market=None):
         if market:
