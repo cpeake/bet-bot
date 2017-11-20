@@ -37,7 +37,9 @@ class ReportManager(threading.Thread):
                     for order in orders:
                         market = betbot_db.market_repo.get_by_id(order['marketId'])
                         runner = betbot_db.runner_repo.get_by_id(order['selectionId'])
-                        market_name = "% %" % (market['event']['venue'], market['marketName'])
+                        venue = market['event']['venue']
+                        race = market['marketName']
+                        market_name = "%s %s" % (venue, race)
                         runner_name = runner['runnerName']
                         side = order['side']
                         size = order['sizeSettled']
