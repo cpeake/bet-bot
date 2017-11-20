@@ -29,7 +29,7 @@ class ReportManager(threading.Thread):
         while True:
             try:
                 self.logger.info("Sending T-1 summary email.")
-                csv = "Strategy,Market,Runner,Side,Stake,Price,Outcome\n"
+                csv = "Placed,Settled,Strategy,Market,Runner,Side,Stake,Price,Outcome,PnL\n"
                 strategies = betbot_db.strategy_repo.get_all()
                 for strategy in strategies:
                     strategy_ref = strategy['strategyRef']
@@ -41,11 +41,14 @@ class ReportManager(threading.Thread):
                         race = market['marketName']
                         market_name = "%s %s" % (venue, race)
                         runner_name = runner['runnerName']
+                        placed_date = order['placedDate']
+                        settled_date = order['settledDate']
                         side = order['side']
                         size = order['sizeSettled']
                         price = order['priceMatched']
                         outcome = order['betOutcome']
-                        csv += "%s,%s,%s,%s,%s,%s,%s\n" % (strategy_ref, market_name, runner_name, side, size, price, outcome)
+                        profit = order['profit']
+                        csv += "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (placed_date, settled_date, strategy_ref, market_name, runner_name, side, size, price, outcome, profit)
                 EmailManager.send_email_with_csv("", "SSS EOD Summary", csv)
                 now = time()
                 tomorrow1am = helpers.get_tomorrow_start_of_day() + timedelta(hours=1)
