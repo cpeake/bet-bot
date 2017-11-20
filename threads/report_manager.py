@@ -29,7 +29,22 @@ class ReportManager(threading.Thread):
         while True:
             try:
                 self.logger.info("Sending T-1 summary email.")
-                EmailManager.send_email_with_csv("", "SSS EOD Summary")
+                csv = "Strategy,Market,Runner,Side,Stake,Price,Outcome\n"
+                strategies = betbot_db.strategy_repo.get_all()
+                for strategy in strategies:
+                    strategy_ref = strategy['strategyRef']
+                    orders = betbot_db.order_repo.get_settled_yesterday_by_strategy(strategy_ref)
+                    for order in orders:
+                        market = betbot_db.market_repo.get_by_id(order['marketId'])
+                        runner = betbot_db.runner_repo.get_by_id(order['selectionId'])
+                        market_name = "% %" % (market['event']['venue'], market['marketName'])
+                        runner_name = runner['runnerName']
+                        side = order['side']
+                        size = order['sizeSettled']
+                        price = order['priceMatched']
+                        outcome = order['betOutcome']
+                        csv += "%s,%s,%s,%s,%s,%s,%s" % (strategy_ref, market_name, runner_name, side, size, price, outcome)
+                EmailManager.send_email_with_csv("", "SSS EOD Summary", csv)
                 now = time()
                 tomorrow1am = helpers.get_tomorrow_start_of_day() + timedelta(hours=1)
                 sleep(tomorrow1am.timestamp() - now)  # Wait until 01:00 tomorrow.

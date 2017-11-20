@@ -377,6 +377,10 @@ class StrategyRepository(object):
         self.logger.debug('Getting strategy with reference %s' % strategy_ref)
         return db.strategies.find_one({'strategyRef': strategy_ref})
 
+    def get_all(self):
+        self.logger.debug('Getting all strategies')
+        return db.strategies.find()
+
     def is_live(self, strategy_ref=''):
         strategy = db.strategies.find_one({'strategyRef': strategy_ref})
         return 'live' in strategy and strategy['live']
