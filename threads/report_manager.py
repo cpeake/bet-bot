@@ -45,7 +45,7 @@ class ReportManager(threading.Thread):
                         size = order['sizeSettled']
                         price = order['priceMatched']
                         outcome = order['betOutcome']
-                        csv += "%s,%s,%s,%s,%s,%s,%s" % (strategy_ref, market_name, runner_name, side, size, price, outcome)
+                        csv += "%s,%s,%s,%s,%s,%s,%s\n" % (strategy_ref, market_name, runner_name, side, size, price, outcome)
                 EmailManager.send_email_with_csv("", "SSS EOD Summary", csv)
                 now = time()
                 tomorrow1am = helpers.get_tomorrow_start_of_day() + timedelta(hours=1)
