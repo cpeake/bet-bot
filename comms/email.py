@@ -20,15 +20,23 @@ smtp_port = os.environ['SMTP_PORT']
 smtp_user = os.environ['SMTP_USERNAME']
 smtp_pass = os.environ['SMTP_PASSWORD']
 recipients = os.environ['EMAIL_RECIPIENTS']
-s = smtplib.SMTP(host=smtp_host, port=smtp_port)
-s.starttls()
-s.login(smtp_user, smtp_pass)
-logger.info("Connected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
 
 
 class EmailManager(object):
-    @staticmethod
-    def send_email_with_csv(message='', subject='', csv=''):
+    def __init__(self):
+        self.logger = logger
+        self.s = smtplib.SMTP(host=smtp_host, port=smtp_port)
+
+    def smtp_connect(self):
+        self.s.starttls()
+        self.s.login(smtp_user, smtp_pass)
+        self.logger.info("Connected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
+
+    def smtp_disconnect(self):
+        self.s.quit()
+        self.logger.info("Disconnected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
+
+    def send_email_with_csv(self, message='', subject='', csv=''):
         msg = MIMEMultipart()  # create a message
 
         # setup the parameters of the message
@@ -45,4 +53,6 @@ class EmailManager(object):
         msg.attach(attachment)
 
         # send the message via the server set up earlier.
-        s.send_message(msg)
+        self.smtp_connect()
+        self.s.send_message(msg)
+        self.smtp_disconnect()
