@@ -8,9 +8,9 @@ from strategies import helpers
 
 # Set up logging
 logger = logging.getLogger('BBDB')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(helpers.get_log_level())
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(helpers.get_log_level())
 formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
@@ -326,6 +326,19 @@ class OrderRepository(object):
         }).sort('settledDate', pymongo.DESCENDING).limit(1)
         if settled_orders.count() > 0:
             return settled_orders[0]
+        else:
+            return None
+
+    def get_latest_today_by_strategy(self, strategy_ref):
+        now = datetime.utcnow()
+        today_sod = datetime(now.year, now.month, now.day, 0, 0)
+        today_eod = datetime(now.year, now.month, now.day, 23, 59)
+        latest_orders = db.orders.find({
+            "customerStrategyRef": strategy_ref,
+            "placedDate":  {'$gte': today_sod, '$lt': today_eod}
+        }).sort('placedDate', pymongo.DESCENDING).limit(1)
+        if latest_orders.count() > 0:
+            return latest_orders[0]
         else:
             return None
 

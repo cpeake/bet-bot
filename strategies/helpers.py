@@ -1,3 +1,4 @@
+import os
 import logging
 import settings
 import betbot_db
@@ -13,6 +14,21 @@ class MarketDepthError(Exception):
         super(MarketDepthError, self).__init__(msg)
         self.depth = depth
         self.stake = stake
+
+
+def get_log_level():
+    level = logging.DEBUG
+    if 'LOG_LEVEL' in os.environ:
+        log_env = os.environ['LOG_LEVEL']
+        if log_env == 'DEBUG':
+            level = logging.DEBUG
+        elif log_env == 'INFO':
+            level = logging.INFO
+        elif log_env == 'WARN':
+            level = logging.WARN
+        else:
+            level = logging.ERROR
+    return level
 
 
 def get_stake_by_ladder_position(position=0):
@@ -59,7 +75,7 @@ def strategy_won_last_market_today(strategy_ref=''):
        or if there is no previous bet made by the strategy, False otherwise"""
     order = betbot_db.order_repo.get_latest_settled_today_by_strategy(strategy_ref)
     if order:
-        if order['betOutcome'] == 'LOST':
+        if 'betOutcome' in order and order['betOutcome'] == 'LOST':
             return False
         else:
             return True
