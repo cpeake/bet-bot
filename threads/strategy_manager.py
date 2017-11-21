@@ -7,12 +7,13 @@ from datetime import datetime
 import betbot_db
 import strategies
 from comms import ChatManager
+from strategies import helpers
 
 # Set up logging
 logger = logging.getLogger('STRAM')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(helpers.get_log_level())
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(helpers.get_log_level())
 formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)

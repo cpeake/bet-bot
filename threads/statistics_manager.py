@@ -9,9 +9,9 @@ from strategies import helpers
 
 # Set up logging
 logger = logging.getLogger('STATM')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(helpers.get_log_level())
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(helpers.get_log_level())
 formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)

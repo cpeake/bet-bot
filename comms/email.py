@@ -4,11 +4,13 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+from strategies import helpers
+
 # Set up logging
 logger = logging.getLogger('EMAILM')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(helpers.get_log_level())
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(helpers.get_log_level())
 formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)

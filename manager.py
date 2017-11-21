@@ -7,12 +7,13 @@ from time import sleep
 import threads
 from betfair.api_ng import API
 from comms import ChatManager
+from strategies import helpers
 
 # Set up logging
 logger = logging.getLogger('MAIN')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(helpers.get_log_level())
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(helpers.get_log_level())
 formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
