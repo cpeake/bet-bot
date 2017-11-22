@@ -25,8 +25,10 @@ class StrategyManager(threading.Thread):
         self.logger = logging.getLogger('STRAM')
         self.api = api
         self.live_mode = live_mode
-        self.bet_all_strategy = strategies.BetAllStrategy()
-        self.lay_all_strategy = strategies.LayAllStrategy()
+        self.bet_all_uk_strategy = strategies.BetAllStrategy('GB')
+        self.bet_all_ie_strategy = strategies.BetAllStrategy('IE')
+        self.lay_all_uk_strategy = strategies.LayAllStrategy('GB')
+        self.lay_all_ie_strategy = strategies.LayAllStrategy('IE')
 
     def run(self):
         self.logger.info('Started Strategy Manager...')
@@ -71,8 +73,10 @@ class StrategyManager(threading.Thread):
     def create_bets(self, market=None):
         market_book = betbot_db.market_book_repo.get_latest_snapshot(market['marketId'])
         return {
-            self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
-            self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
+            self.bet_all_uk_strategy.reference: self.bet_all_uk_strategy.create_bets(market, market_book),
+            self.bet_all_ie_strategy.reference: self.bet_all_ie_strategy.create_bets(market, market_book),
+            self.lay_all_uk_strategy.reference: self.lay_all_uk_strategy.create_bets(market, market_book),
+            self.lay_all_ie_strategy.reference: self.lay_all_ie_strategy.create_bets(market, market_book)
         }
 
     def place_bets(self, market=None, market_bets=None):

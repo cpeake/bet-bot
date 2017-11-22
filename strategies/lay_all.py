@@ -15,10 +15,11 @@ logger.addHandler(ch)
 
 
 class LayAllStrategy(object):
-    def __init__(self):
+    def __init__(self, country='GB'):
         self.logger = logging.getLogger('ALS1')
         self.state = None
-        self.reference = 'ALS1'
+        self.reference = 'ALS1-' + country
+        self.country = country
         self.init_state()
 
     def init_state(self):
@@ -65,22 +66,23 @@ class LayAllStrategy(object):
     def create_bets(self, market=None, market_book=None):
         bets = []
         if market and market_book:
-            self.update_state()
-            stake = helpers.get_stake_by_ladder_position(0)  # fixed staking plan
-            weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
-            runner = helpers.get_favourite(market_book)
-            new_bet = {
-                'selectionId': runner['selectionId'],
-                'handicap': 0,
-                'side': 'LAY',
-                'orderType': 'LIMIT',
-                'limitOrder': {
-                    'size': stake * weight,
-                    'price': helpers.get_lay_limit_price(runner, stake * weight),
-                    'persistenceType': 'LAPSE',
-                    'timeInForce': 'FILL_OR_KILL'
-                }}
-            bets.append(new_bet)
+            if market['event']['countryCode'] == self.country:
+                self.update_state()
+                stake = helpers.get_stake_by_ladder_position(0)  # fixed staking plan
+                weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
+                runner = helpers.get_favourite(market_book)
+                new_bet = {
+                    'selectionId': runner['selectionId'],
+                    'handicap': 0,
+                    'side': 'LAY',
+                    'orderType': 'LIMIT',
+                    'limitOrder': {
+                        'size': stake * weight,
+                        'price': helpers.get_lay_limit_price(runner, stake * weight),
+                        'persistenceType': 'LAPSE',
+                        'timeInForce': 'FILL_OR_KILL'
+                    }}
+                bets.append(new_bet)
         else:
             msg = 'Failed to create bets for strategy %s, no market/book provided' % self.reference
             raise Exception(msg)
