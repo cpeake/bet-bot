@@ -488,7 +488,7 @@ class WinnersRepository(object):
                 db.winners.insert(winner)
 
     def get_by_market(self, market_id=''):
-        winner = db.winners.find({'marketId': market_id})
+        winner = db.winners.find_one({'marketId': market_id})
         self.logger.debug("Found winner for market %s: %s" % (market_id, winner))
         return winner
 
