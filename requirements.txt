@@ -4,3 +4,4 @@ pytz>=pytz-2017.2
 pymongo>=3.5.1
 slackclient>=1.0.9
 rollbar>=0.13.17
+beautifulsoup4>=4.6.0

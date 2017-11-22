@@ -67,8 +67,13 @@ class OrderManager(threading.Thread):
                 market_id = instruction['marketId']
                 selection_id = instruction['instruction']['selectionId']
                 strategy_ref = instruction['strategyRef']
-                runner_book = self.api.get_runner_book(market_id, selection_id)
-                runner_status = runner_book['runners'][0]['status']
+                winner = betbot_db.winners_repo.get_by_market(market_id)
+                runner_status = 'ACTIVE'
+                if winner:
+                    if winner['selectionId'] == selection_id:
+                        runner_status = 'WINNER'
+                    else:
+                        runner_status = 'LOSER'
                 side = instruction['instruction']['side']
                 bet_outcome = None
                 if side == 'BACK':

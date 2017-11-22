@@ -129,6 +129,18 @@ class MarketRepository(object):
             self.logger.debug("No most recently played market found.")
             return None
 
+    def get_by_time_and_venue(self, start_time=None, venue=None):
+        if start_time and venue:
+            market = db.markets.find_one({
+                "marketStartTime": start_time,
+                "event.venue": venue
+            })
+            self.logger.debug("Found market by time and venue: %s" % market)
+            return market
+        else:
+            msg = 'Failed to find market, start time and/or venue not supplied.'
+            raise Exception(msg)
+
 
 class MarketBookRepository(object):
     def __init__(self):
@@ -188,6 +200,7 @@ class RunnerRepository(object):
             # Remove unnecessary keys if they exist.
             runner.pop('handicap', None)
             runner.pop('sortPriority', None)
+            runner['name_lower'] = runner['runnerName'].lower()
             key = {'selectionId': runner['selectionId']}
             self.logger.debug("Upserting runner: %s" % runner)
             db.runners.update(key, runner, upsert=True)
@@ -202,6 +215,20 @@ class RunnerRepository(object):
             return runner
         else:
             msg = 'Failed to find runner %s' % selection_id
+            raise Exception(msg)
+
+    def get_by_name(self, runner_name=''):
+        runner = db.runners.find_one({
+            "$or": [
+                {'name_lower': runner_name.lower()},
+                {'runnerName': runner_name}
+            ]
+        })
+        if runner:
+            self.logger.debug("Found runner with name %s: %s" % (runner_name, runner))
+            return runner
+        else:
+            msg = 'Failed to find runner with name %s' % runner_name
             raise Exception(msg)
 
 
@@ -447,6 +474,20 @@ class AccountFundsRepository(object):
             db.account_funds.update(key, account_funds, upsert=True)
 
 
+class WinnersRepository(object):
+    def __init__(self):
+        self.logger = logging.getLogger('BBDB')
+
+    def upsert(self, winner=None):
+        if winner:
+            existing_winner = db.winners.find_one({'marketId': winner['marketId'], 'selectionId': winner['selectionId']})
+            if not existing_winner:
+                winner['updatedDate'] = datetime.utcnow()
+                key = {'marketId': winner['marketId'], 'selectionId': winner['selectionId']}
+                self.logger.debug("Inserting winner: %s" % winner)
+                db.winners.insert(winner)
+
+
 market_repo = MarketRepository()
 runner_repo = RunnerRepository()
 market_book_repo = MarketBookRepository()
@@ -456,3 +497,4 @@ order_repo = OrderRepository()
 strategy_repo = StrategyRepository()
 statistic_repo = StatisticRepository()
 account_funds_repo = AccountFundsRepository()
+winners_repo = WinnersRepository()

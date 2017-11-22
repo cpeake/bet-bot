@@ -6,3 +6,4 @@ from .strategy_manager import StrategyManager
 from .order_manager import OrderManager
 from .market_book_manager import MarketBookManager
 from .report_manager import ReportManager
+from .result_scraper import ResultScraper
