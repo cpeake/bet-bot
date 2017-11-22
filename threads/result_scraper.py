@@ -18,6 +18,9 @@ formatter = logging.Formatter('(%(name)s) - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 
+# Disable non-HTTPS warnings
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 class ResultScraper(threading.Thread):
     def __init__(self):
