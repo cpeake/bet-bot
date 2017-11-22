@@ -487,6 +487,11 @@ class WinnersRepository(object):
                 self.logger.debug("Inserting winner: %s" % winner)
                 db.winners.insert(winner)
 
+    def get_by_market(self, market_id=''):
+        winner = db.winners.find({'marketId': market_id})
+        self.logger.debug("Found winner for market %s: %s" % (market_id, winner))
+        return winner
+
 
 market_repo = MarketRepository()
 runner_repo = RunnerRepository()
