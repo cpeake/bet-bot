@@ -4,7 +4,7 @@ import traceback
 from time import sleep, time
 from datetime import timedelta
 
-from comms import EmailManager
+from comms import email
 from strategies import helpers
 import betbot_db
 
@@ -53,7 +53,7 @@ class ReportManager(threading.Thread):
                         outcome = order['betOutcome']
                         profit = order['profit']
                         csv += "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (placed_date, placed_time, settled_date, settled_time, strategy_ref, market_name, runner_name, side, size, price, outcome, profit)
-                EmailManager.send_email_with_csv("", "SSS EOD Summary", csv)
+                email.send_with_csv("", "SSS EOD Summary", csv)
                 now = time()
                 tomorrow1am = helpers.get_tomorrow_start_of_day() + timedelta(hours=1)
                 sleep(tomorrow1am.timestamp() - now)  # Wait until 01:00 tomorrow.

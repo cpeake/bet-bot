@@ -22,37 +22,27 @@ smtp_pass = os.environ['SMTP_PASSWORD']
 recipients = os.environ['EMAIL_RECIPIENTS']
 
 
-class EmailManager(object):
-    def __init__(self):
-        self.logger = logger
-        self.s = smtplib.SMTP(host=smtp_host, port=smtp_port)
+def send(msg=None):
+    s = smtplib.SMTP(host=smtp_host, port=smtp_port)
+    s.starttls()
+    s.login(smtp_user, smtp_pass)
+    logger.info("Connected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
+    s.send_message(msg)
+    s.quit()
+    logger.info("Disconnected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
 
-    def smtp_connect(self):
-        self.s.starttls()
-        self.s.login(smtp_user, smtp_pass)
-        self.logger.info("Connected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
 
-    def smtp_disconnect(self):
-        self.s.quit()
-        self.logger.info("Disconnected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
+def send_with_csv(message='', subject='', csv=''):
+    msg = MIMEMultipart()  # create a message
 
-    def send_email_with_csv(self, message='', subject='', csv=''):
-        msg = MIMEMultipart()  # create a message
+    # setup the parameters of the message
+    msg['From'] = smtp_user
+    msg['To'] = recipients
+    msg['Subject'] = subject
 
-        # setup the parameters of the message
-        msg['From'] = smtp_user
-        msg['To'] = recipients
-        msg['Subject'] = subject
-
-        # add in the message body
-        msg.attach(MIMEText(message, 'plain'))
-
-        attachment = MIMEText(csv, 'csv')
-        attachment.add_header("Content-Disposition", "attachment", filename="summary.csv")
-
-        msg.attach(attachment)
-
-        # send the message via the server set up earlier.
-        self.smtp_connect()
-        self.s.send_message(msg)
-        self.smtp_disconnect()
+    # add in the message body
+    msg.attach(MIMEText(message, 'plain'))
+    attachment = MIMEText(csv, 'csv')
+    attachment.add_header("Content-Disposition", "attachment", filename="summary.csv")
+    msg.attach(attachment)
+    send(msg)
