@@ -68,7 +68,8 @@ class OrderManager(threading.Thread):
                 selection_id = instruction['instruction']['selectionId']
                 strategy_ref = instruction['strategyRef']
                 winner = betbot_db.winners_repo.get_by_market(market_id)
-                runner_status = 'ACTIVE'
+                runner_book = self.api.get_runner_book(market_id, selection_id)
+                runner_status = runner_book['runners'][0]['status']
                 if winner:
                     if winner['selectionId'] == selection_id:
                         runner_status = 'WINNER'
