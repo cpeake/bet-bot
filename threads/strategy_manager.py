@@ -92,6 +92,7 @@ class StrategyManager(threading.Thread):
                         self.post_bets(market, strategy_bets, strategy_ref)
                     else:
                         resp = self.simulate_place_bets(market, strategy_bets, strategy_ref)
+                        self.post_bets(market, strategy_bets, strategy_ref)
                     if type(resp) is dict and 'status' in resp:
                         if resp['status'] == 'SUCCESS':
                             # Set the market as played.
