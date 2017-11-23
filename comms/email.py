@@ -29,7 +29,7 @@ def send(msg=None):
     logger.info("Connected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
     s.send_message(msg)
     s.quit()
-    logger.info("Disconnected to SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
+    logger.info("Disconnected from SMTP server %s@%s:%s" % (smtp_user, smtp_host, smtp_port))
 
 
 def send_with_csv(message='', subject='', csv=''):
