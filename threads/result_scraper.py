@@ -62,7 +62,7 @@ class ResultScraper(threading.Thread):
                             except Exception:
                                 self.logger.warning("Failed to find runner matching %s" % runner_name)
                     else:
-                        self.logger.warning("Failed to find market matching %s %s." % (race_time, venue))
+                        self.logger.debug("Failed to find market matching %s %s." % (race_time, venue))
                 sleep(30)
             except Exception as exc:
                 msg = traceback.format_exc()
