@@ -85,10 +85,10 @@ class StrategyManager(threading.Thread):
                 if len(strategy_bets) > 0:
                     if self.live_mode and live_strategy:
                         resp = self.api.place_bets(market['marketId'], strategy_bets, strategy_ref)
-                        self.post_bets(market, strategy_bets, strategy_ref)
+                        # self.post_bets(market, strategy_bets, strategy_ref)
                     else:
                         resp = self.simulate_place_bets(market, strategy_bets, strategy_ref)
-                        self.post_bets(market, strategy_bets, strategy_ref)
+                        # self.post_bets(market, strategy_bets, strategy_ref)
                     if type(resp) is dict and 'status' in resp:
                         if resp['status'] == 'SUCCESS':
                             # Set the market as played.
