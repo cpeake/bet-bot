@@ -15,11 +15,10 @@ logger.addHandler(ch)
 
 
 class BetAllStrategy(object):
-    def __init__(self, country='GB'):
+    def __init__(self):
         self.logger = logging.getLogger('ABS1')
         self.state = None
-        self.reference = 'ABS1-' + country
-        self.country = country
+        self.reference = 'ABS1'
         self.init_state()
 
     def init_state(self):
@@ -104,26 +103,25 @@ class BetAllStrategy(object):
     def create_bets(self, market=None, market_book=None):
         bets = []
         if market and market_book:
-            if market['event']['countryCode'] == self.country:
-                self.update_state()
-                if self.state['stopLoss']:
-                    self.logger.info('Stop loss triggered, no more bets today.')
-                else:
-                    runner = helpers.get_favourite(market_book)
-                    stake = helpers.get_stake_by_ladder_position(self.state['stakeLadderPosition'])
-                    weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
-                    new_bet = {
-                        'selectionId': runner['selectionId'],
-                        'handicap': 0,
-                        'side': 'BACK',
-                        'orderType': 'LIMIT',
-                        'limitOrder': {
-                            'size': stake * weight,
-                            'price': helpers.get_back_limit_price(runner, stake * weight),
-                            'persistenceType': 'LAPSE',
-                            'timeInForce': 'FILL_OR_KILL'
-                        }}
-                    bets.append(new_bet)
+            self.update_state()
+            if self.state['stopLoss']:
+                self.logger.info('Stop loss triggered, no more bets today.')
+            else:
+                runner = helpers.get_favourite(market_book)
+                stake = helpers.get_stake_by_ladder_position(self.state['stakeLadderPosition'])
+                weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
+                new_bet = {
+                    'selectionId': runner['selectionId'],
+                    'handicap': 0,
+                    'side': 'BACK',
+                    'orderType': 'LIMIT',
+                    'limitOrder': {
+                        'size': stake * weight,
+                        'price': helpers.get_back_limit_price(runner, stake * weight),
+                        'persistenceType': 'LAPSE',
+                        'timeInForce': 'FILL_OR_KILL'
+                    }}
+                bets.append(new_bet)
         else:
             msg = 'Failed to create bets for strategy %s, no market/book provided' % self.reference
             raise Exception(msg)
