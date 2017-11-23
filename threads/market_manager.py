@@ -39,7 +39,7 @@ class MarketManager(threading.Thread):
                            'eventTypeIds': ['7'],  # horse racing
                            'marketTypeCodes': ['WIN'],
                            'marketBettingTypes': ['ODDS'],
-                           'marketCountries': ['GB', 'IE'],  # UK markets
+                           'marketCountries': ['GB'],  # UK markets
                            'turnInPlayEnabled': True,  # will go in-play
                            'inPlayOnly': False  # market NOT currently in-play
                        },
