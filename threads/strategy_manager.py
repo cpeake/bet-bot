@@ -68,8 +68,16 @@ class StrategyManager(threading.Thread):
                 self.logger.error('Strategy Manager Crashed: %s' % msg)
                 sleep(1 * 60)
 
+    def get_market_book(self, market_id=''):
+        market_book = betbot_db.market_book_repo.get_recent_snapshot(market_id)
+        if not market_book:
+            market_book = self.api.get_market_book(market_id)
+            betbot_db.market_book_repo.insert(market_book)
+        return market_book
+
     def create_bets(self, market=None):
-        market_book = betbot_db.market_book_repo.get_latest_snapshot(market['marketId'])
+        # market_book = betbot_db.market_book_repo.get_latest_snapshot(market['marketId'])
+        market_book = self.get_market_book(market['marketId'])
         return {
             self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
             self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
@@ -85,10 +93,10 @@ class StrategyManager(threading.Thread):
                 if len(strategy_bets) > 0:
                     if self.live_mode and live_strategy:
                         resp = self.api.place_bets(market['marketId'], strategy_bets, strategy_ref)
-                        # self.post_bets(market, strategy_bets, strategy_ref)
+                        self.post_bets(market, strategy_bets, strategy_ref)
                     else:
                         resp = self.simulate_place_bets(market, strategy_bets, strategy_ref)
-                        # self.post_bets(market, strategy_bets, strategy_ref)
+                        self.post_bets(market, strategy_bets, strategy_ref)
                     if type(resp) is dict and 'status' in resp:
                         if resp['status'] == 'SUCCESS':
                             # Set the market as played.

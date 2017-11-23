@@ -158,6 +158,20 @@ class MarketBookRepository(object):
         else:
             return None
 
+    def get_recent_snapshot(self, market_id=''):
+        self.logger.debug("Finding recent market book snapshot for market %s." % market_id)
+        five_seconds_ago = datetime.utcnow() - timedelta(seconds=5)
+        market_books = db.market_books.find({
+            "marketId": market_id,
+            "snapshotTime": {"$gte": five_seconds_ago}
+        }).sort([("snapshotTime", -1)])
+        if market_books.count() > 0:
+            market_book = market_books.next()
+            self.logger.debug("Found recent market book snapshot for market %s: %s" % (market_id, market_book))
+            return market_book
+        else:
+            return None
+
     def insert(self, market_book=None):
         if market_book:
             # convert datetime strings to proper date times for storing as ISODate
