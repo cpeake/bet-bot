@@ -52,7 +52,7 @@ class LayAllStrategy(object):
                 self.logger.info('Reset days at maximum weight to 0.')
             else:
                 self.logger.info('Lost yesterday.')
-                if self.state['weightLadderPosition'] < (len(settings.stake_ladder) - 1):
+                if self.state['weightLadderPosition'] < (len(settings.weight_ladder) - 1):
                     self.state['weightLadderPosition'] += 1
                     weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
                     self.logger.info('Incremented weighting to %sx.' % weight)
