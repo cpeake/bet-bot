@@ -97,10 +97,22 @@ if not index_exists('customerStrategyRef', order_indices):
 if not index_exists('profit', order_indices):
     db.orders.create_index([('profit', pymongo.ASCENDING)], name='profit')
 
-# Create indices on colection 'runners'
+# Create indices on collection 'runners'
 
 runner_indices = db.runners.index_information()
 
 if index_exists('selectionId', runner_indices):
     db.runners.drop_index('selectionId')
 db.runners.create_index([('selectionId', pymongo.DESCENDING)], name='selectionId', unique=True)
+
+# Create indices on collection 'winners'
+
+winner_indices = db.winners.index_information()
+
+if index_exists('marketId', winner_indices):
+    db.winners.drop_index('marketId')
+db.winners.create_index([('marketId', pymongo.DESCENDING)], name='marketId')
+
+if index_exists('selectionId', winner_indices):
+    db.winners.drop_index('selectionId')
+db.winners.create_index([('selectionId', pymongo.DESCENDING)], name='selectionId')
