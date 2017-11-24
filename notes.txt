@@ -1,7 +1,0 @@
-Lay All
-
-Stake ladder by day (increment on previous day loss), no strategy stop loss, static stake plan weighting.
-
-Bet All
-
-Stake ladder by race (increment on loss, reset each day), strategy stop loss at 16x3, stake ladder weighting by day
