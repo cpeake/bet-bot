@@ -27,6 +27,7 @@ class StrategyManager(threading.Thread):
         self.live_mode = live_mode
         self.bet_all_strategy = strategies.BetAllStrategy()
         self.lay_all_strategy = strategies.LayAllStrategy()
+        self.bet_12_strategy = strategies.Bet12Strategy()
 
     def run(self):
         self.logger.info('Started Strategy Manager...')
@@ -76,11 +77,11 @@ class StrategyManager(threading.Thread):
         return market_book
 
     def create_bets(self, market=None):
-        # market_book = betbot_db.market_book_repo.get_latest_snapshot(market['marketId'])
         market_book = self.get_market_book(market['marketId'])
         return {
             self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
-            self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book)
+            self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book),
+            self.bet_12_strategy.reference: self.bet_12_strategy.create_bets(market, market_book)
         }
 
     def place_bets(self, market=None, market_bets=None):
