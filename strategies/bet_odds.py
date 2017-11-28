@@ -96,7 +96,7 @@ class BetOddsStrategy(object):
                 if last_order:
                     last_instruction = betbot_db.instruction_repo.get_by_id(last_order['betId'])
                     if last_instruction:
-                        last_stake = last_instruction['limitOrder']['size']
+                        last_stake = last_instruction['instruction']['limitOrder']['size']
                         self.state['lostStakeSum'] += last_stake
                         self.logger.info('Incremented lost stake sum by £%s' % last_stake)
                     else:
