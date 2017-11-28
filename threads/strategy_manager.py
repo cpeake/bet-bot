@@ -149,6 +149,6 @@ class StrategyManager(threading.Thread):
             runner_name = runner['runnerName']
             price = strategy_bet['limitOrder']['price'],
             size = strategy_bet['limitOrder']['size'],
-            msg = '%s placed an order on %s in the %s %s for %s @ %s.' %\
+            msg = '%s placed an order on %s in the %s %s for £%10.2f @ %10.2f.' %\
                   (strategy_name, runner_name, venue, market_name, size, price)
             ChatManager.post_message(msg)
