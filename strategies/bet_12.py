@@ -105,6 +105,7 @@ class Bet12Strategy(object):
     # Reset state back to previous as no bet was placed on a market.
     def update_state_as_skipped(self):
         self.state = self.previous_state
+        betbot_db.strategy_repo.upsert(self.state)
 
     def create_bets(self, market=None, market_book=None):
         bets = []
