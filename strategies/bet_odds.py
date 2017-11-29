@@ -114,7 +114,10 @@ class BetOddsStrategy(object):
             else:
                 runner = helpers.get_favourite(market_book)
                 adjusted_last_price = runner['lastPriceTraded'] - 1
-                stake = (self.state['lostStakeSum'] + adjusted_last_price) / adjusted_last_price
+                if self.state['lostStakeSum'] == 0:
+                    stake = settings.minimum_stake
+                else:
+                    stake = (self.state['lostStakeSum'] + adjusted_last_price) / adjusted_last_price
                 weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
                 new_bet = {
                     'selectionId': runner['selectionId'],
