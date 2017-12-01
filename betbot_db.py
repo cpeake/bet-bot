@@ -193,6 +193,7 @@ class RunnerBookRepository(object):
 
     def upsert(self, runner_book=None):
         if runner_book:
+            self.logger.info("Upserting runner book: %s" % runner_book)
             # do datetime conversions first
             key = {
                 'marketId': runner_book['marketId'],
