@@ -198,7 +198,7 @@ class RunnerBookRepository(object):
                 'selectionId': runner_book['runners'][0]['selectionId']
             }
             self.logger.debug("Upserting runner book: %s" % runner_book)
-            db.markets.update(key, runner_book, upsert=True)
+            db.runner_books.update(key, runner_book, upsert=True)
         else:
             msg = 'Failed to upsert a runner book, None provided.'
             raise Exception(msg)
