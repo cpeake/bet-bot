@@ -197,7 +197,7 @@ class RunnerBookRepository(object):
             # do datetime conversions first
             key = {
                 'marketId': runner_book['marketId'],
-                'selectionId': runner_book['selectionId']
+                'selectionId': runner_book['runners'][0]['selectionId']
             }
             self.logger.debug("Upserting runner book: %s" % runner_book)
             db.markets.update(key, runner_book, upsert=True)
