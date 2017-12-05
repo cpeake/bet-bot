@@ -89,7 +89,7 @@ class BetOddsStrategy(object):
                 self.logger.info('Lost last race.')
                 self.state['sequentialLosses'] += 1
                 self.logger.info('Incremented sequential losses by 1.')
-                if self.state['sequentialLosses'] == 5:
+                if self.state['sequentialLosses'] == 3:
                     self.state['stopLoss'] = True
                     self.logger.info('5 races lost in a row, triggering stop loss.')
                 last_order = betbot_db.order_repo.get_latest_today_by_strategy(self.reference)
@@ -123,6 +123,7 @@ class BetOddsStrategy(object):
                     stake = (self.state['lostStakeSum'] + adjusted_last_price) / adjusted_last_price
                 weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
                 new_bet = {
+                    'customerOrderRef': helpers.get_unique_ref(self.reference),
                     'selectionId': runner['selectionId'],
                     'handicap': 0,
                     'side': 'BACK',
