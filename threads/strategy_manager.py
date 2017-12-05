@@ -96,6 +96,7 @@ class StrategyManager(threading.Thread):
                 if len(strategy_bets) > 0:
                     if self.live_mode and live_strategy:
                         resp = self.api.place_bets(market['marketId'], strategy_bets, strategy_ref)
+                        self.logger.info(resp)
                         # self.post_bets(market, strategy_bets, strategy_ref)
                     else:
                         resp = self.simulate_place_bets(market, strategy_bets, strategy_ref)
