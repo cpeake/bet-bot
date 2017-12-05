@@ -179,13 +179,20 @@ class OrderManager(threading.Thread):
                 strategy_pnls[strategy_ref] += cleared_order['profit']
             else:
                 strategy_pnls[strategy_ref] = cleared_order['profit']
+        total_statistic = betbot_db.statistic_repo.get_by_reference('TOTALS')
         for strategy_ref, pnl in strategy_pnls.items():
             statistics = betbot_db.statistic_repo.get_by_reference(strategy_ref)
             if statistics['updatedDate'] < helpers.get_start_of_day():
                 statistics['dailyPnL'] = 0.0
             statistics['dailyPnL'] += pnl
+            total_statistic['dailyPnL'] += pnl
             statistics['weeklyPnL'] += pnl
+            total_statistic['weeklyPnL'] += pnl
             statistics['monthlyPnL'] += pnl
+            total_statistic['monthlyPnL'] += pnl
             statistics['yearlyPnL'] += pnl
+            total_statistic['yearlyPnL'] += pnl
             statistics['lifetimePnL'] += pnl
+            total_statistic['lifetimePnL'] += pnl
             betbot_db.statistic_repo.upsert(statistics)
+        betbot_db.statistic_repo.upsert(total_statistic)
