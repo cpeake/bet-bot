@@ -103,11 +103,12 @@ class BetAllStrategy(object):
     def create_bets(self, market=None, market_book=None):
         bets = []
         if market and market_book:
+            if not self.state['active']:
+                self.logger.info('Strategy is not active, no bets generated.')
+                return bets
             self.update_state()
             if self.state['stopLoss']:
                 self.logger.info('Stop loss triggered, no more bets today.')
-            elif not self.state['active']:
-                self.logger.info('Strategy is not active, no bets generated')
             else:
                 runner = helpers.get_favourite(market_book)
                 stake = helpers.get_stake_by_ladder_position(self.state['stakeLadderPosition'])

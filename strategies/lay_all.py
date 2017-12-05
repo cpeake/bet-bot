@@ -66,7 +66,7 @@ class LayAllStrategy(object):
         bets = []
         if market and market_book:
             if not self.state['active']:
-                self.logger.info('Strategy is not active, no bets generated')
+                self.logger.info('Strategy is not active, no bets generated.')
             else:
                 self.update_state()
                 stake = helpers.get_stake_by_ladder_position(0)  # fixed staking plan
