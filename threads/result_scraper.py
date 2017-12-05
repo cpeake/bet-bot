@@ -53,7 +53,7 @@ class ResultScraper(threading.Thread):
                         self.logger.debug("Found results for %s %s" % (market['event']['venue'], market['marketName']))
                         if len(places) > 0:
                             runner = places[0].find('div', attrs={'class': 'fast-results-place-name'}).text
-                            runner_name = runner.split('(')[0].rstrip()
+                            runner_name = runner.split('(')[0].rstrip().replace("'", "")
                             try:
                                 runner = betbot_db.runner_repo.get_by_name(runner_name)
                                 winner = {'marketId': market['marketId'], 'selectionId': runner['selectionId']}
