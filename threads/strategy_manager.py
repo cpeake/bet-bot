@@ -134,6 +134,7 @@ class StrategyManager(threading.Thread):
                     'marketId': market['marketId'],
                     'marketStartTime': market['marketStartTime'],
                     'strategyRef': strategy_ref,
+                    'orderStatus': 'EXECUTION_COMPLETE',
                     'live': False
                 }
                 resp['instructionReports'].append(instruction_report)
