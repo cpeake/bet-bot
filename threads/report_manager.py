@@ -28,6 +28,9 @@ class ReportManager(threading.Thread):
         self.logger.info('Started Report Manager...')
         while True:
             try:
+                now = time()
+                tomorrow1am = helpers.get_tomorrow_start_of_day() + timedelta(hours=1)
+                sleep(tomorrow1am.timestamp() - now)  # Wait until 01:00 tomorrow.
                 self.logger.info("Sending T-1 summary email.")
                 csv = "PlacedDate,PlacedTime,SettledDate,SettledTime,Strategy,Market,Runner,Side,Stake,Price,Outcome,PnL\n"
                 strategies = betbot_db.strategy_repo.get_all()
@@ -54,9 +57,6 @@ class ReportManager(threading.Thread):
                         profit = order['profit']
                         csv += "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n" % (placed_date, placed_time, settled_date, settled_time, strategy_ref, market_name, runner_name, side, size, price, outcome, profit)
                 email.send_with_csv("", "SSS EOD Summary", csv)
-                now = time()
-                tomorrow1am = helpers.get_tomorrow_start_of_day() + timedelta(hours=1)
-                sleep(tomorrow1am.timestamp() - now)  # Wait until 01:00 tomorrow.
             except Exception as exc:
                 msg = traceback.format_exc()
                 http_err = 'ConnectionError:'
