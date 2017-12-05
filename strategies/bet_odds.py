@@ -141,6 +141,7 @@ class BetOddsStrategy(object):
                     bets.append(new_bet)
                 else:
                     self.state = self.previous_state
+                    betbot_db.strategy_repo.upsert(self.state)
                     self.logger.info("No bet generated, favourite is not odds-on (<2 on Betfair).")
                     self.logger.info("Reverted to previous strategy state.")
         else:

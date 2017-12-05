@@ -102,11 +102,6 @@ class Bet12Strategy(object):
                         self.logger.info('Previous bet was at maximum stake, reset stake ladder.')
         betbot_db.strategy_repo.upsert(self.state)
 
-    # Reset state back to previous as no bet was placed on a market.
-    def update_state_as_skipped(self):
-        self.state = self.previous_state
-        betbot_db.strategy_repo.upsert(self.state)
-
     def create_bets(self, market=None, market_book=None):
         bets = []
         if market and market_book:
@@ -123,6 +118,7 @@ class Bet12Strategy(object):
                 price = helpers.get_back_limit_price(runner, stake * weight)
                 if 2 <= price <= 3:
                     new_bet = {
+                        'customerOrderRef': helpers.get_unique_ref(self.reference),
                         'selectionId': runner['selectionId'],
                         'handicap': 0,
                         'side': 'BACK',
@@ -136,6 +132,7 @@ class Bet12Strategy(object):
                     bets.append(new_bet)
                 else:
                     self.state = self.previous_state
+                    betbot_db.strategy_repo.upsert(self.state)
                     self.logger.info("No bet generated, favourite price is not between 1-2 (2-3 on Betfair).")
                     self.logger.info("Reverted to previous strategy state.")
         else:
