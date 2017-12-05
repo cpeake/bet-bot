@@ -65,22 +65,25 @@ class LayAllStrategy(object):
     def create_bets(self, market=None, market_book=None):
         bets = []
         if market and market_book:
-            self.update_state()
-            stake = helpers.get_stake_by_ladder_position(0)  # fixed staking plan
-            weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
-            runner = helpers.get_favourite(market_book)
-            new_bet = {
-                'selectionId': runner['selectionId'],
-                'handicap': 0,
-                'side': 'LAY',
-                'orderType': 'LIMIT',
-                'limitOrder': {
-                    'size': stake * weight,
-                    'price': helpers.get_lay_limit_price(runner, stake * weight),
-                    'persistenceType': 'LAPSE',
-                    'timeInForce': 'FILL_OR_KILL'
-                }}
-            bets.append(new_bet)
+            if not self.state['active']:
+                self.logger.info('Strategy is not active, no bets generated')
+            else:
+                self.update_state()
+                stake = helpers.get_stake_by_ladder_position(0)  # fixed staking plan
+                weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
+                runner = helpers.get_favourite(market_book)
+                new_bet = {
+                    'selectionId': runner['selectionId'],
+                    'handicap': 0,
+                    'side': 'LAY',
+                    'orderType': 'LIMIT',
+                    'limitOrder': {
+                        'size': stake * weight,
+                        'price': helpers.get_lay_limit_price(runner, stake * weight),
+                        'persistenceType': 'LAPSE',
+                        'timeInForce': 'FILL_OR_KILL'
+                    }}
+                bets.append(new_bet)
         else:
             msg = 'Failed to create bets for strategy %s, no market/book provided' % self.reference
             raise Exception(msg)

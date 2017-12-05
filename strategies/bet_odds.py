@@ -111,6 +111,8 @@ class BetOddsStrategy(object):
             self.update_state()
             if self.state['stopLoss']:
                 self.logger.info('Stop loss triggered, no more bets today.')
+            elif not self.state['active']:
+                self.logger.info('Strategy is not active, no bets generated')
             else:
                 runner = helpers.get_favourite(market_book)
                 adjusted_last_price = runner['lastPriceTraded'] - 1
