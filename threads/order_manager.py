@@ -49,6 +49,7 @@ class OrderManager(threading.Thread):
             for bet in active_instructions:
                 bet_ids.append(bet['betId'])
             current_orders = self.api.get_current_orders(bet_ids)
+            # Check Fast Results for early feedback that can be added to current orders.
             betbot_db.order_repo.upsert(current_orders)
             cleared_orders = self.api.get_cleared_orders(bet_ids)
             betbot_db.order_repo.upsert(cleared_orders)
@@ -88,30 +89,68 @@ class OrderManager(threading.Thread):
                         bet_outcome = 'WON'
                     if runner_status == 'WINNER':
                         bet_outcome = 'LOST'
-                order = {
-                    'marketId': market_id,
-                    'selectionId': selection_id,
-                    'eventTypeId': 7,
-                    'betId': instruction['betId'],
-                    'orderType': instruction['instruction']['orderType'],
-                    'side': side,
-                    'placedDate': instruction['placedDate'],
-                    'itemDescription': {
-                        'eventDesc': market_id,
-                        'runnerDesc': selection_id,
-                        'marketStartTime': instruction['marketStartTime']
-                    },
-                    'customerStrategyRef': strategy_ref,
-                    'simulated': True
-                }
-                if bet_outcome:
+                if not bet_outcome:
+                    order = {
+                        'betId': instruction['betId'],
+                        'marketId': market_id,
+                        'selectionId': selection_id,
+                        'handicap': 0,
+                        'priceSize':
+                            {
+                                'price': instruction['instruction']['limitOrder']['price'],
+                                'size': instruction['instruction']['limitOrder']['size']
+                            },
+                        'bspLiability': 0,
+                        'side': side,
+                        'status': 'EXECUTION_COMPLETE',
+                        'persistenceType': 'LAPSE',
+                        'orderType': instruction['instruction']['orderType'],
+                        'placedDate': instruction['placedDate'],
+                        'matchedDate': datetime.utcnow(),
+                        'averagePriceMatched': instruction['instruction']['limitOrder']['price'],
+                        'sizeMatched': instruction['instruction']['limitOrder']['size'],
+                        'sizeRemaining': 0,
+                        'sizeLapsed': 0,
+                        'sizeCancelled': 0,
+                        'sizeVoided': 0,
+                        'regulatorCode': 'GIBRALTAR REGULATOR',
+                        'customerStrategyRef': strategy_ref,
+                        'simulated': True
+                    }
+                else:
                     size = instruction['instruction']['limitOrder']['size']
                     price = instruction['instruction']['limitOrder']['price']
-                    order['betOutcome'] = bet_outcome
-                    order['settledDate'] = datetime.utcnow()
-                    order['sizeSettled'] = size
-                    order['priceMatched'] = price
-                    order['profit'] = self.calculate_profit(side, size, price, bet_outcome)
+                    order = {
+                        'eventTypeId': '7',
+                        # 'eventId': ,
+                        'marketId': market_id,
+                        'selectionId': selection_id,
+                        'handicap': 0,
+                        'betId': instruction['betId'],
+                        'placedDate': instruction['placedDate'],
+                        'persistenceType': 'LAPSE',
+                        'orderType': instruction['instruction']['orderType'],
+                        'side': side,
+                        'itemDescription': {
+                            'eventTypeDesc': 'Horse Racing',
+                            'eventDesc': '',
+                            'marketDesc': 'Win',
+                            'marketType': 'WIN',
+                            'marketStartTime': instruction['marketStartTime'],
+                            'runnerDesc': '',
+                            'numberOfWinners': 1
+                        },
+                        'betOutcome': bet_outcome,
+                        'priceRequested': price,
+                        'settledDate': datetime.utcnow(),
+                        'lastMatchedDate': datetime.utcnow(),
+                        'betCount': 1,
+                        'priceMatched': price,
+                        'priceReduced': False,
+                        'sizeSettled': size,
+                        'profit': self.calculate_profit(side, size, price, bet_outcome),
+                        'customerStrategyRef': strategy_ref
+                    }
                 betbot_db.order_repo.upsert([order])
                 if 'settledDate' in order:
                     betbot_db.instruction_repo.set_settled([order])
