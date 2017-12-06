@@ -114,6 +114,7 @@ class BetAllStrategy(object):
                 stake = helpers.get_stake_by_ladder_position(self.state['stakeLadderPosition'])
                 weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
                 new_bet = {
+                    'customerOrderRef': helpers.get_unique_ref(self.reference),
                     'selectionId': runner['selectionId'],
                     'handicap': 0,
                     'side': 'BACK',

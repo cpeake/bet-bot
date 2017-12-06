@@ -1,6 +1,7 @@
 import os
 import logging
 import settings
+import time
 import betbot_db
 from datetime import datetime, timedelta
 
@@ -149,3 +150,7 @@ def get_start_of_month():
 def get_start_of_year():
     now = datetime.utcnow()
     return datetime(now.year, 1, 1, 0, 0)
+
+
+def get_unique_ref(ref):
+    return "%s.%s" % (ref, int(round(time.time() * 1000)))

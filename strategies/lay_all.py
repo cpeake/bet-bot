@@ -73,6 +73,7 @@ class LayAllStrategy(object):
                 weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
                 runner = helpers.get_favourite(market_book)
                 new_bet = {
+                    'customerOrderRef': helpers.get_unique_ref(self.reference),
                     'selectionId': runner['selectionId'],
                     'handicap': 0,
                     'side': 'LAY',
