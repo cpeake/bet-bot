@@ -357,12 +357,14 @@ class API(object):
             msg = 'Failed to get market book: resp = %s' % books
             raise Exception(msg)
 
-    def get_runner_book(self, market_id='', selection_id='', req_id=1):
+    def get_runner_book(self, market_id='', selection_id='', price_data=None, req_id=1):
         url = 'https://api.betfair.com/exchange/betting/json-rpc/v1'
         params = {}
         params['locale'] = self.locale
         params['marketId'] = market_id
         params['selectionId'] = selection_id
+        if price_data:
+            params['priceProjection'] = {'priceData': price_data}
         req = {
             'jsonrpc': '2.0',
             'method': 'SportsAPING/v1.0/listRunnerBook',
