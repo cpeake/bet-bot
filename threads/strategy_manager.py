@@ -1,6 +1,7 @@
 import logging
 import threading
 import traceback
+import random
 from time import sleep
 from datetime import datetime
 
@@ -77,6 +78,13 @@ class StrategyManager(threading.Thread):
             betbot_db.market_book_repo.insert(market_book)
         return market_book
 
+    def get_runner_book(self, market_id='', selection_id=''):
+        runner_book = betbot_db.runner_book_repo.get_recent_snapshot(selection_id)
+        if not runner_book:
+            runner_book = self.api.get_runner_book(market_id, selection_id, ['EX_ALL_OFFERS'])
+            betbot_db.runner_book_repo.insert(runner_book)
+        return runner_book
+
     def create_bets(self, market=None):
         market_book = self.get_market_book(market['marketId'])
         return {
@@ -86,6 +94,15 @@ class StrategyManager(threading.Thread):
             self.bet_odds_strategy.reference: self.bet_odds_strategy.create_bets(market, market_book)
         }
 
+    def determine_price(self, side='', size=0.0, runner_book=None):
+        runner = runner_book['runners'][0]
+        if side == 'BACK':
+            return helpers.get_back_limit_price(runner, size)
+        elif side == 'LAY':
+            return helpers.get_lay_limit_price(runner, size)
+        else:
+            return 0.0
+
     def place_bets(self, market=None, market_bets=None):
         """place bets for all strategies on a given market"""
         venue = market['event']['venue']
@@ -93,21 +110,36 @@ class StrategyManager(threading.Thread):
         if market_bets:
             for strategy_ref, strategy_bets in market_bets.items():
                 live_strategy = betbot_db.strategy_repo.is_live(strategy_ref)
-                if len(strategy_bets) > 0:
+                retry_count = 0
+                while len(strategy_bets) > 0:
+                    # Set limit order prices as this may be an order re-submission.
+                    for strategy_bet in strategy_bets:
+                        runner_book = self.get_runner_book(market['marketId'], strategy_bet['selectionId'])
+                        size = strategy_bet['limitOrder']['size']
+                        side = strategy_bet['side']
+                        strategy_bet['limitOrder']['price'] = self.determine_price(side, size, runner_book)
+                    # Place bets via the Betfair API (or simulate it).
                     if self.live_mode and live_strategy:
                         resp = self.api.place_bets(market['marketId'], strategy_bets, strategy_ref)
-                        self.logger.info(resp)
-                        # self.post_bets(market, strategy_bets, strategy_ref)
                     else:
                         resp = self.simulate_place_bets(market, strategy_bets, strategy_ref)
-                        # self.post_bets(market, strategy_bets, strategy_ref)
+                    # Evaluate the API response.
                     if type(resp) is dict and 'status' in resp:
                         if resp['status'] == 'SUCCESS':
-                            # Set the market as played.
-                            betbot_db.market_repo.set_played(market)
-                            # Persist the instructions.
+                            # Check for execution and persist.
+                            success_refs = []
                             for instruction in resp['instructionReports']:
+                                # If the order didn't execute, mark the instruction as settled immediately.
+                                if 'orderStatus' in instruction and instruction['orderStatus'] == 'EXECUTION_COMPLETE':
+                                    instruction['settled'] = False
+                                    success_refs.append(instruction['instruction']['customerOrderRef'])
+                                else:  # Fill-or-Kill Limit Order EXPIRED so nothing to settle.
+                                    instruction['settled'] = True
+                                # Add the strategy reference for display purposes.
+                                instruction['customerStrategyRef'] = strategy_ref
                                 betbot_db.instruction_repo.insert(market, instruction)
+                            # Remove any instructions that have executed, leaving any that EXPIRED.
+                            strategy_bets = [x for x in strategy_bets if x['customerOrderRef'] not in success_refs]
                             self.logger.info('Successfully placed %s bet(s) on %s %s.' % (strategy_ref, venue, name))
                         else:
                             self.logger.error(
@@ -118,6 +150,14 @@ class StrategyManager(threading.Thread):
                     else:
                         msg = 'Failed to place %s bet(s) on %s %s - resp = %s' % (strategy_ref, venue, name, resp)
                         raise Exception(msg)
+                    retry_count += 1
+                    if retry_count == 5:
+                        self.logger.warn("Failed to place one or more %s bets 5 times, giving up." % strategy_ref)
+                        break
+                    # Throttle order re-submissions.
+                    sleep(1)
+            # Set the market as played.
+            betbot_db.market_repo.set_played(market)
 
     def simulate_place_bets(self, market=None, strategy_bets=None, strategy_ref=''):
         self.logger.debug('Simulating receipt of instruction reports.')
@@ -134,7 +174,7 @@ class StrategyManager(threading.Thread):
                     'marketId': market['marketId'],
                     'marketStartTime': market['marketStartTime'],
                     'strategyRef': strategy_ref,
-                    'orderStatus': 'EXECUTION_COMPLETE',
+                    'orderStatus': 'EXECUTION_COMPLETE' if random.randrange(1, 10) <= 8 else 'EXPIRED',
                     'live': False
                 }
                 resp['instructionReports'].append(instruction_report)

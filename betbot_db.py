@@ -193,6 +193,8 @@ class RunnerBookRepository(object):
 
     def upsert(self, runner_book=None):
         if runner_book:
+            # add a snapshot datetime
+            runner_book['snapshotTime'] = datetime.utcnow()
             key = {
                 'marketId': runner_book['marketId'],
                 'selectionId': runner_book['runners'][0]['selectionId']
@@ -202,6 +204,20 @@ class RunnerBookRepository(object):
         else:
             msg = 'Failed to upsert a runner book, None provided.'
             raise Exception(msg)
+
+    def get_recent_snapshot(self, selection_id=''):
+        self.logger.debug("Finding recent runner book snapshot for runner %s." % selection_id)
+        one_second_ago = datetime.utcnow() - timedelta(seconds=1)
+        runner_books = db.runner_books.find({
+            "selectionId": selection_id,
+            "snapshotTime": {"$gte": one_second_ago}
+        }).sort([("snapshotTime", -1)])
+        if runner_books.count() > 0:
+            runner_book = runner_books.next()
+            self.logger.debug("Found recent runner book snapshot for selection %s: %s" % (selection_id, runner_book))
+            return runner_book
+        else:
+            return None
 
 
 class RunnerRepository(object):
@@ -266,7 +282,6 @@ class InstructionRepository(object):
             if placed_date and type(placed_date) is str:
                 instruction['placedDate'] = dateutil.parser.parse(placed_date)
             instruction['marketId'] = market_id
-            instruction['settled'] = False
             self.logger.debug("Inserting instruction: %s" % instruction)
             db.instructions.insert_one(instruction)
         else:
