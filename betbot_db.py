@@ -174,6 +174,7 @@ class MarketBookRepository(object):
 
     def insert(self, market_book=None):
         if market_book:
+            self.logger.debug("Inserting market book: %s" % market_book)
             # convert datetime strings to proper date times for storing as ISODate
             if 'lastMatchTime' in market_book:
                 last_match_time = market_book['lastMatchTime']
@@ -182,6 +183,7 @@ class MarketBookRepository(object):
             # add a snapshot datetime
             market_book['snapshotTime'] = datetime.utcnow()
             db.market_books.insert_one(market_book)
+            self.logger.debug("Inserted market book: %s" % market_book)
         else:
             msg = 'Failed to insert a market book, None provided.'
             raise Exception(msg)
@@ -272,7 +274,7 @@ class InstructionRepository(object):
             return instruction
         else:
             msg = 'Failed to find instruction %s' % bet_id
-            raise Exception
+            raise Exception(msg)
 
     def insert(self, market=None, instruction=None):
         if market and instruction:
@@ -365,6 +367,7 @@ class OrderRepository(object):
             db.orders.update(key, order, upsert=True)
 
     def get_settled_yesterday_by_strategy(self, strategy_ref=''):
+        self.logger.debug("Getting yesterday's settled orders for strategy %s." % strategy_ref)
         now = datetime.utcnow()
         today_sod = datetime(now.year, now.month, now.day, 0, 0)
         yesterday_sod = today_sod - timedelta(days=1)
@@ -375,6 +378,7 @@ class OrderRepository(object):
         }))
 
     def get_latest_settled_by_strategy(self, strategy_ref=''):
+        self.logger.debug("Getting latest settled order for strategy %s." % strategy_ref)
         settled_orders = db.orders.find({
             "profit": {"$exists": True},
             "customerStrategyRef": strategy_ref
@@ -511,7 +515,6 @@ class WinnersRepository(object):
             existing_winner = db.winners.find_one({'marketId': winner['marketId'], 'selectionId': winner['selectionId']})
             if not existing_winner:
                 winner['updatedDate'] = datetime.utcnow()
-                key = {'marketId': winner['marketId'], 'selectionId': winner['selectionId']}
                 self.logger.debug("Inserting winner: %s" % winner)
                 db.winners.insert(winner)
 

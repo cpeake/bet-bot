@@ -82,7 +82,7 @@ class StrategyManager(threading.Thread):
         runner_book = betbot_db.runner_book_repo.get_recent_snapshot(selection_id)
         if not runner_book:
             runner_book = self.api.get_runner_book(market_id, selection_id, ['EX_ALL_OFFERS'])
-            betbot_db.runner_book_repo.insert(runner_book)
+            betbot_db.runner_book_repo.upsert(runner_book)
         return runner_book
 
     def create_bets(self, market=None):
