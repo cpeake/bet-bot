@@ -168,13 +168,14 @@ class StrategyManager(threading.Thread):
                     'status': 'SUCCESS',
                     'instruction': strategy_bet,
                     'placedDate': datetime.utcnow(),
-                    'betId': '%s-%s-%s' % (strategy_ref, market['marketId'], strategy_bet['selectionId']),
+                    'betId': helpers.get_unique_ref(strategy_ref),
                     'averagePriceMatched': strategy_bet['limitOrder']['price'],
                     'sizeMatched': strategy_bet['limitOrder']['size'],
                     'marketId': market['marketId'],
                     'marketStartTime': market['marketStartTime'],
                     'strategyRef': strategy_ref,
                     'orderStatus': 'EXECUTION_COMPLETE' if random.randrange(1, 10) <= 8 else 'EXPIRED',
+                    'customerOrderRef': strategy_bet['customerOrderRef'],
                     'live': False
                 }
                 resp['instructionReports'].append(instruction_report)
