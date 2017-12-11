@@ -101,6 +101,7 @@ class OrderManager(threading.Thread):
                 side = instruction['instruction']['side']
                 strategy_ref = instruction['strategyRef']
                 outcome = self.get_outcome(market_id, selection_id, side)
+                self.logger.info(outcome)
                 if 'result' not in outcome or outcome['indicative']:
                     order = {
                         'betId': instruction['betId'],
