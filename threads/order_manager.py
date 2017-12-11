@@ -162,7 +162,7 @@ class OrderManager(threading.Thread):
                         'priceMatched': price,
                         'priceReduced': False,
                         'sizeSettled': size,
-                        'profit': self.calculate_profit(side, size, price, bet_outcome),
+                        'profit': self.calculate_profit(side, size, price, outcome['result']),
                         'customerStrategyRef': strategy_ref
                     }
                 betbot_db.order_repo.upsert([order])
