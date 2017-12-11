@@ -130,7 +130,7 @@ class OrderManager(threading.Thread):
                         'customerStrategyRef': strategy_ref,
                         'simulated': True
                     }
-                    if 'result' in outcome:
+                    if outcome['result']:
                         order['betOutcome'] = outcome['result']
                 else:
                     size = instruction['instruction']['limitOrder']['size']
