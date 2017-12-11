@@ -16,9 +16,8 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 
-# Captures the market book at 5 second intervals in the 60 seconds before market start time,
-# or until the book closes whichever comes first.
-# Captures the market book at 30 second intervals after market start time until results are in.
+# Captures the market book at 1 second intervals from 5 seconds before market start until just before the
+# book closes. The intention is to capture an early indication of the outcome based on final in-play odds.
 class MarketBookManager(threading.Thread):
     def __init__(self, api):
         threading.Thread.__init__(self)
@@ -30,18 +29,19 @@ class MarketBookManager(threading.Thread):
         venue = market['event']['venue']
         name = market['marketName']
         self.logger.info('Tracking the book for %s %s.' % (venue, name))
-        market_open = True
-        while market_open:
-            market_book = self.api.get_market_book(market_id)
-            betbot_db.market_book_repo.insert(market_book)
-            market_open = market_book['status'] == 'OPEN'
-            sleep(5)
         market_closed = False
         while not market_closed:
+            # Whichever runner has lay prices < 2, select as the indicative winner.
             market_book = self.api.get_market_book(market_id)
-            betbot_db.market_book_repo.insert(market_book)
             market_closed = market_book['status'] == 'CLOSED'
-            sleep(30)
+            if not market_closed:
+                runner = helpers.get_indicative_winner(market_book)
+                if runner:
+                    selection_id = runner['selectionId']
+                    winner = {'marketId': market_id, 'selectionId': selection_id}
+                    self.logger.debug("Constructed winner: %s" % winner)
+                    betbot_db.winners_repo.upsert(winner)
+            sleep(1)
         self.logger.info('%s %s book has closed, tracking ended.' % (venue, name))
 
     def run(self):
@@ -53,15 +53,15 @@ class MarketBookManager(threading.Thread):
                     now = datetime.utcnow()
                     start_time = next_markets[0]['marketStartTime']
                     delta = (start_time - now).total_seconds()
-                    if delta < 60:  # Market is going to start within 70 seconds.
+                    if delta < 5:  # Market is going to start within 5 seconds.
                         for market in next_markets:
                             thread_name = 'MBW-%s' % market['marketId']
                             mbw = threading.Thread(target=self.watch_market_book, name=thread_name, args=(market, ))
                             mbw.start()
                         sleep(2 * 60)  # Until after the market start time has passed.
                     else:
-                        self.logger.info("Sleeping until 60 seconds before next market(s) start.")
-                        sleep(delta - 60)
+                        self.logger.info("Sleeping until 5 seconds before next market(s) start(s).")
+                        sleep(delta - 5)
                 else:
                     self.logger.info('No next market(s) available.')
                     sleep(5 * 60)

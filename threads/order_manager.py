@@ -41,12 +41,14 @@ class OrderManager(threading.Thread):
                 self.logger.error('Order Manager Crashed: %s' % msg)
                 sleep(1 * 60)  # Wait for 1 minute before attempting to log in again.
 
-    def indicative_outcome(self, market_id='', selection_id='', side=''):
+    def get_outcome(self, market_id='', selection_id='', side=''):
+        indicative = False
         winner = betbot_db.winners_repo.get_by_market(market_id)
         runner_book = self.api.get_runner_book(market_id, selection_id)
         betbot_db.runner_book_repo.upsert(runner_book)
         runner_status = runner_book['runners'][0]['status']
-        if winner:
+        if winner and not runner_status == 'WINNER' and not runner_status == 'LOSER':
+            indicative = True
             if winner['selectionId'] == selection_id:
                 runner_status = 'WINNER'
             else:
@@ -62,7 +64,7 @@ class OrderManager(threading.Thread):
                 bet_outcome = 'WON'
             if runner_status == 'WINNER':
                 bet_outcome = 'LOST'
-        return bet_outcome
+        return {'result': bet_outcome, 'indicative': indicative}
     
     def process_live_instructions(self):
         active_instructions = betbot_db.instruction_repo.get_active()
@@ -72,14 +74,13 @@ class OrderManager(threading.Thread):
             for bet in active_instructions:
                 bet_ids.append(bet['betId'])
             current_orders = self.api.get_current_orders(bet_ids)
-            # Check Fast Results for early feedback that can be added to current orders.
             for order in current_orders:
                 market_id = order['marketId']
                 selection_id = order['selectionId']
                 side = order['side']
-                bet_outcome = self.indicative_outcome(market_id, selection_id, side)
+                bet_outcome = self.get_outcome(market_id, selection_id, side)
                 if bet_outcome:
-                    order['betOutcome'] = bet_outcome
+                    order['result'] = bet_outcome
             betbot_db.order_repo.upsert(current_orders)
             cleared_orders = self.api.get_cleared_orders(bet_ids)
             betbot_db.order_repo.upsert(cleared_orders)
@@ -99,8 +100,8 @@ class OrderManager(threading.Thread):
                 selection_id = instruction['instruction']['selectionId']
                 side = instruction['instruction']['side']
                 strategy_ref = instruction['strategyRef']
-                bet_outcome = self.indicative_outcome(market_id, selection_id, side)
-                if not bet_outcome:
+                outcome = self.get_outcome(market_id, selection_id, side)
+                if 'result' not in outcome or outcome['indicative']:
                     order = {
                         'betId': instruction['betId'],
                         'marketId': market_id,
@@ -128,6 +129,8 @@ class OrderManager(threading.Thread):
                         'customerStrategyRef': strategy_ref,
                         'simulated': True
                     }
+                    if 'result' in outcome:
+                        order['betOutcome'] = outcome['result']
                 else:
                     size = instruction['instruction']['limitOrder']['size']
                     price = instruction['instruction']['limitOrder']['price']
@@ -151,7 +154,7 @@ class OrderManager(threading.Thread):
                             'runnerDesc': '',
                             'numberOfWinners': 1
                         },
-                        'betOutcome': bet_outcome,
+                        'betOutcome': outcome['result'],
                         'priceRequested': price,
                         'settledDate': datetime.utcnow(),
                         'lastMatchedDate': datetime.utcnow(),

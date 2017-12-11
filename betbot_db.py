@@ -511,12 +511,10 @@ class WinnersRepository(object):
         self.logger = logging.getLogger('BBDB')
 
     def upsert(self, winner=None):
-        if winner:
-            existing_winner = db.winners.find_one({'marketId': winner['marketId'], 'selectionId': winner['selectionId']})
-            if not existing_winner:
-                winner['updatedDate'] = datetime.utcnow()
-                self.logger.debug("Inserting winner: %s" % winner)
-                db.winners.insert(winner)
+        key = {'marketId': winner['marketId']}
+        winner['updatedDate'] = datetime.utcnow()
+        db.winners.update(key, winner, upsert=True)
+        self.logger.debug('Upserted winner: %s' % winner)
 
     def get_by_market(self, market_id=''):
         winner = db.winners.find_one({'marketId': market_id})

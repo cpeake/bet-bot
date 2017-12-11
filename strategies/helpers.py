@@ -96,6 +96,16 @@ def get_favourite(market_book=None):
     return favourite
 
 
+def get_indicative_winner(market_book=None):
+    for runner in market_book['runners']:
+        market_levels = runner['ex']['availableToLay']
+        if len(market_levels) > 0:
+            price = market_levels[0]['price']
+            if price < 1.5:
+                return runner
+    return None
+
+
 def get_back_limit_price(runner=None, stake=0.0):
     if runner:
         market_levels = runner['ex']['availableToBack']
