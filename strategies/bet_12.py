@@ -60,9 +60,10 @@ class Bet12Strategy(object):
             self.logger.info('Updating state at beginning of new day.')
             if helpers.strategy_won_yesterday(self.reference):
                 self.logger.info('Won yesterday.')
-                self.state['weightLadderPosition'] = 0
-                weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
-                self.logger.info('Reset weighting to %sx.' % weight)
+                if self.state['weightLadderPosition'] > 0:
+                    self.state['weightLadderPosition'] -= 1
+                    weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
+                    self.logger.info('Reduced weighting to %sx.' % weight)
                 self.state['daysAtMaxWeight'] = 0
                 self.logger.info('Reset days at maximum weight to 0.')
             else:
@@ -70,7 +71,7 @@ class Bet12Strategy(object):
                 if self.state['weightLadderPosition'] < (len(settings.weight_ladder) - 1):
                     self.state['weightLadderPosition'] += 1
                     weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
-                    self.logger.info('Incremented weighting to %sx.' % weight)
+                    self.logger.info('Increased weighting to %sx.' % weight)
                 else:
                     self.state['daysAtMaxWeight'] += 1
                     self.logger.info('Incremented days at maximum weight to %s.' % self.state['daysAtMaxWeight'])
