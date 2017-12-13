@@ -53,16 +53,19 @@ market_book_indices = db.market_books.index_information()
 if not index_exists('marketId', market_book_indices):
     db.market_books.create_index([('marketId', pymongo.DESCENDING)], name='marketId')
 
-if index_exists('snapshotId', market_book_indices):
-    db.market_books.drop_index('snapshotId')
-db.market_books.create_index([('snapshotTime', pymongo.DESCENDING)], name='snapshotId', expireAfterSeconds=60*60*24*3)
-
 # Create indices on collection 'runner_books'
 
 runner_book_indices = db.runner_books.index_information()
 
 if not index_exists('marketId', runner_book_indices):
     db.runner_books.create_index([('marketId', pymongo.DESCENDING)], name='marketId')
+
+# Create indices on collection 'runner_book_results'
+
+runner_book_result_indices = db.runner_book_results.index_information()
+
+if not index_exists('marketId', runner_book_result_indices):
+    db.runner_book_results.create_index([('marketId', pymongo.DESCENDING)], name='marketId')
 
 # Create indices on collection 'instructions'
 
