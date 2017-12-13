@@ -53,7 +53,7 @@ class OrderManager(threading.Thread):
         winner = betbot_db.winners_repo.get_by_market(market_id)
         runner_status = None
         if simulated:
-            runner_book = self.get_runner_book(selection_id)
+            runner_book = self.get_runner_book(market_id, selection_id)
             runner_status = runner_book['runners'][0]['status']
         if winner and not runner_status == 'WINNER' and not runner_status == 'LOSER':
             indicative = True
