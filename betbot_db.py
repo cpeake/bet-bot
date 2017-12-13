@@ -229,7 +229,7 @@ class RunnerBookResultRepository(object):
             runner_book['snapshotTime'] = datetime.utcnow()
             key = {'marketId': runner_book['marketId']}
             self.logger.debug("Upserting runner book result: %s" % runner_book)
-            db.runner_books_results.update(key, runner_book, upsert=True)
+            db.runner_book_results.update(key, runner_book, upsert=True)
         else:
             msg = 'Failed to upsert a runner book result, None provided.'
             raise Exception(msg)
