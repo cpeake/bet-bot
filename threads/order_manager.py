@@ -107,7 +107,7 @@ class OrderManager(threading.Thread):
                 selection_id = instruction['instruction']['selectionId']
                 side = instruction['instruction']['side']
                 strategy_ref = instruction['strategyRef']
-                outcome = self.get_outcome(market_id, selection_id, side, simulated=True)
+                outcome = self.get_outcome(market_id, selection_id, side, True)
                 self.logger.info(outcome)
                 if not outcome['result'] or outcome['indicative']:
                     order = {
