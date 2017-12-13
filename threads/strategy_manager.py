@@ -111,7 +111,7 @@ class StrategyManager(threading.Thread):
             for strategy_ref, strategy_bets in market_bets.items():
                 live_strategy = betbot_db.strategy_repo.is_live(strategy_ref)
                 retry_count = 0
-                while len(strategy_bets) > 0:
+                while len(strategy_bets) > 0:  # Some orders may not execute first time around.
                     # Set limit order prices as this may be an order re-submission.
                     for strategy_bet in strategy_bets:
                         runner_book = self.get_runner_book(market['marketId'], strategy_bet['selectionId'])
