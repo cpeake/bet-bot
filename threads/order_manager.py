@@ -41,12 +41,20 @@ class OrderManager(threading.Thread):
                 self.logger.error('Order Manager Crashed: %s' % msg)
                 sleep(1 * 60)  # Wait for 1 minute before attempting to log in again.
 
-    def get_outcome(self, market_id='', selection_id='', side=''):
+    def get_runner_book(self, market_id='', selection_id=''):
+        runner_book = betbot_db.runner_book_result_repo.get_recent_snapshot(selection_id)
+        if not runner_book:
+            runner_book = self.api.get_runner_book(market_id, selection_id)
+            betbot_db.runner_book_result_repo.upsert(runner_book)
+        return runner_book
+
+    def get_outcome(self, market_id='', selection_id='', side='', simulated=False):
         indicative = False
         winner = betbot_db.winners_repo.get_by_market(market_id)
-        runner_book = self.api.get_runner_book(market_id, selection_id)
-        betbot_db.runner_book_repo.upsert(runner_book)
-        runner_status = runner_book['runners'][0]['status']
+        runner_status = None
+        if simulated:
+            runner_book = self.get_runner_book(selection_id)
+            runner_status = runner_book['runners'][0]['status']
         if winner and not runner_status == 'WINNER' and not runner_status == 'LOSER':
             indicative = True
             if winner['selectionId'] == selection_id:
@@ -78,9 +86,8 @@ class OrderManager(threading.Thread):
                 market_id = order['marketId']
                 selection_id = order['selectionId']
                 side = order['side']
-                bet_outcome = self.get_outcome(market_id, selection_id, side)
-                if bet_outcome:
-                    order['result'] = bet_outcome
+                outcome = self.get_outcome(market_id, selection_id, side)
+                order['result'] = outcome['result']
             betbot_db.order_repo.upsert(current_orders)
             cleared_orders = self.api.get_cleared_orders(bet_ids)
             betbot_db.order_repo.upsert(cleared_orders)
@@ -100,7 +107,7 @@ class OrderManager(threading.Thread):
                 selection_id = instruction['instruction']['selectionId']
                 side = instruction['instruction']['side']
                 strategy_ref = instruction['strategyRef']
-                outcome = self.get_outcome(market_id, selection_id, side)
+                outcome = self.get_outcome(market_id, selection_id, side, simulated=True)
                 self.logger.info(outcome)
                 if not outcome['result'] or outcome['indicative']:
                     order = {

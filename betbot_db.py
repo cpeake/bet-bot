@@ -197,10 +197,7 @@ class RunnerBookRepository(object):
         if runner_book:
             # add a snapshot datetime
             runner_book['snapshotTime'] = datetime.utcnow()
-            key = {
-                'marketId': runner_book['marketId'],
-                'selectionId': runner_book['runners'][0]['selectionId']
-            }
+            key = {'marketId': runner_book['marketId']}
             self.logger.debug("Upserting runner book: %s" % runner_book)
             db.runner_books.update(key, runner_book, upsert=True)
         else:
@@ -217,6 +214,36 @@ class RunnerBookRepository(object):
         if runner_books.count() > 0:
             runner_book = runner_books.next()
             self.logger.debug("Found recent runner book snapshot for selection %s: %s" % (selection_id, runner_book))
+            return runner_book
+        else:
+            return None
+
+
+class RunnerBookResultRepository(object):
+    def __init__(self):
+        self.logger = logging.getLogger('BBDB')
+
+    def upsert(self, runner_book=None):
+        if runner_book:
+            # add a snapshot datetime
+            runner_book['snapshotTime'] = datetime.utcnow()
+            key = {'marketId': runner_book['marketId']}
+            self.logger.debug("Upserting runner book result: %s" % runner_book)
+            db.runner_books_results.update(key, runner_book, upsert=True)
+        else:
+            msg = 'Failed to upsert a runner book result, None provided.'
+            raise Exception(msg)
+
+    def get_recent_snapshot(self, selection_id=''):
+        self.logger.debug("Finding recent runner book result snapshot for runner %s." % selection_id)
+        one_second_ago = datetime.utcnow() - timedelta(seconds=1)
+        runner_books = db.runner_book_results.find({
+            "selectionId": selection_id,
+            "snapshotTime": {"$gte": one_second_ago}
+        }).sort([("snapshotTime", -1)])
+        if runner_books.count() > 0:
+            runner_book = runner_books.next()
+            self.logger.debug("Found recent runner book result snapshot for selection %s: %s" % (selection_id, runner_book))
             return runner_book
         else:
             return None
@@ -526,6 +553,7 @@ market_repo = MarketRepository()
 runner_repo = RunnerRepository()
 market_book_repo = MarketBookRepository()
 runner_book_repo = RunnerBookRepository()
+runner_book_result_repo = RunnerBookResultRepository()
 instruction_repo = InstructionRepository()
 order_repo = OrderRepository()
 strategy_repo = StrategyRepository()
