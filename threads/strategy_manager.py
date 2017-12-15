@@ -55,6 +55,7 @@ class StrategyManager(threading.Thread):
                                 self.logger.info('Generated bets on %s %s.' % (venue, name))
                                 self.logger.info(strategy_bets)
                                 self.place_bets(next_market, strategy_bets)
+                                betbot_db.market_repo.set_played(next_market)
                             else:
                                 self.logger.info('No bets generated on %s %s, skipping.')
                                 betbot_db.market_repo.set_skipped(next_market, 'NO_BETS_CREATED')
@@ -156,8 +157,6 @@ class StrategyManager(threading.Thread):
                         break
                     # Throttle order re-submissions.
                     sleep(1)
-            # Set the market as played.
-            betbot_db.market_repo.set_played(market)
 
     def simulate_place_bets(self, market=None, strategy_bets=None, strategy_ref=''):
         self.logger.debug('Simulating receipt of instruction reports.')
