@@ -120,31 +120,37 @@ class BetOddsStrategy(object):
                 return bets
             self.update_state()
             runner = helpers.get_favourite(market_book)
-            adjusted_last_price = runner['lastPriceTraded'] - 1
-            if self.state['lostStakeSum'] == 0:
-                stake = settings.minimum_stake
-            else:
-                stake = (self.state['lostStakeSum'] + adjusted_last_price) / adjusted_last_price
-            weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
-            price = helpers.get_back_limit_price(runner, stake * weight)
-            if price < 2:
-                new_bet = {
-                    'customerOrderRef': helpers.get_unique_ref(self.reference),
-                    'selectionId': runner['selectionId'],
-                    'handicap': 0,
-                    'side': 'BACK',
-                    'orderType': 'LIMIT',
-                    'limitOrder': {
-                        'size': stake * weight,
-                        'price': price,
-                        'persistenceType': 'LAPSE',
-                        'timeInForce': 'FILL_OR_KILL'
-                    }}
-                bets.append(new_bet)
+            if runner:
+                adjusted_last_price = runner['lastPriceTraded'] - 1
+                if self.state['lostStakeSum'] == 0:
+                    stake = settings.minimum_stake
+                else:
+                    stake = (self.state['lostStakeSum'] + adjusted_last_price) / adjusted_last_price
+                weight = helpers.get_weight_by_ladder_position(self.state['weightLadderPosition'])
+                price = helpers.get_back_limit_price(runner, stake * weight)
+                if price < 2:
+                    new_bet = {
+                        'customerOrderRef': helpers.get_unique_ref(self.reference),
+                        'selectionId': runner['selectionId'],
+                        'handicap': 0,
+                        'side': 'BACK',
+                        'orderType': 'LIMIT',
+                        'limitOrder': {
+                            'size': stake * weight,
+                            'price': price,
+                            'persistenceType': 'LAPSE',
+                            'timeInForce': 'FILL_OR_KILL'
+                        }}
+                    bets.append(new_bet)
+                else:
+                    self.state = deepcopy(self.previous_state)
+                    betbot_db.strategy_repo.upsert(self.state)
+                    self.logger.info("No bet generated, favourite is not odds-on (<2 on Betfair).")
+                    self.logger.info("Reverted to previous strategy state.")
             else:
                 self.state = deepcopy(self.previous_state)
                 betbot_db.strategy_repo.upsert(self.state)
-                self.logger.info("No bet generated, favourite is not odds-on (<2 on Betfair).")
+                self.logger.info("No bet generated, no favourite identified.")
                 self.logger.info("Reverted to previous strategy state.")
         else:
             msg = 'Failed to create bets for strategy %s, no market/book provided' % self.reference
