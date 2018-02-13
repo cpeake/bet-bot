@@ -30,6 +30,7 @@ class StrategyManager(threading.Thread):
         self.lay_all_strategy = strategies.LayAllStrategy()
         self.bet_12_strategy = strategies.Bet12Strategy()
         self.bet_odds_strategy = strategies.BetOddsStrategy()
+        self.g5_bet_12_strategy = strategies.Group5Bet12Strategy()
 
     def run(self):
         self.logger.info('Started Strategy Manager...')
@@ -92,7 +93,8 @@ class StrategyManager(threading.Thread):
             self.bet_all_strategy.reference: self.bet_all_strategy.create_bets(market, market_book),
             self.lay_all_strategy.reference: self.lay_all_strategy.create_bets(market, market_book),
             self.bet_12_strategy.reference: self.bet_12_strategy.create_bets(market, market_book),
-            self.bet_odds_strategy.reference: self.bet_odds_strategy.create_bets(market, market_book)
+            self.bet_odds_strategy.reference: self.bet_odds_strategy.create_bets(market, market_book),
+            self.g5_bet_12_strategy.reference: self.g5_bet_12_strategy.create_bets(market, market_book)
         }
 
     def determine_price(self, side='', size=0.0, runner_book=None):
