@@ -40,6 +40,8 @@ class Group5Bet12Strategy(object):
     def update_state(self):
         self.previous_state = deepcopy(self.state)
         self.state['groupPosition'] += 1
+        if self.state['groupPosition'] > 0 and helpers.strategy_won_last_market(self.reference):
+            self.state['stop'] = True
         self.logger.info('Incremented group position to %s.' % self.state['groupPosition'])
         if self.state['groupPosition'] == 5:
             self.logger.info('Reached end of race grouping. Reset group position and stop.')
@@ -61,25 +63,28 @@ class Group5Bet12Strategy(object):
             if runner:
                 stake = self.state['startingStake'] * self.state['stakeLadder'][self.state['groupPosition']]
                 price = helpers.get_back_limit_price(runner, stake)
-                if 2.0 <= price <= 3.0:
-                    new_bet = {
-                        'customerOrderRef': helpers.get_unique_ref(self.reference),
-                        'selectionId': runner['selectionId'],
-                        'handicap': 0,
-                        'side': 'BACK',
-                        'orderType': 'LIMIT',
-                        'limitOrder': {
-                            'size': stake,
-                            'price': price,
-                            'persistenceType': 'LAPSE',
-                            'timeInForce': 'FILL_OR_KILL'
-                        }}
-                    bets.append(new_bet)
+                if not self.state['stop']:
+                    if 2.0 <= price <= 3.0:
+                        new_bet = {
+                            'customerOrderRef': helpers.get_unique_ref(self.reference),
+                            'selectionId': runner['selectionId'],
+                            'handicap': 0,
+                            'side': 'BACK',
+                            'orderType': 'LIMIT',
+                            'limitOrder': {
+                                'size': stake,
+                                'price': price,
+                                'persistenceType': 'LAPSE',
+                                'timeInForce': 'FILL_OR_KILL'
+                            }}
+                        bets.append(new_bet)
+                    else:
+                        self.state = deepcopy(self.previous_state)
+                        betbot_db.strategy_repo.upsert(self.state)
+                        self.logger.info("No bet generated, favourite price is not between 1-2 (2-3 on Betfair).")
+                        self.logger.info("Reverted to previous strategy state.")
                 else:
-                    self.state = deepcopy(self.previous_state)
-                    betbot_db.strategy_repo.upsert(self.state)
-                    self.logger.info("No bet generated, favourite price is not between 1-2 (2-3 on Betfair).")
-                    self.logger.info("Reverted to previous strategy state.")
+                    self.logger.info("No bet generated, group stop in place due to group win.")
             else:
                 self.state = deepcopy(self.previous_state)
                 betbot_db.strategy_repo.upsert(self.state)
