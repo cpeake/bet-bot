@@ -1,12 +1,11 @@
 import logging
 import betbot_db
-import settings
 from copy import deepcopy
 from datetime import datetime
 from strategies import helpers
 
 # Set up logging
-logger = logging.getLogger('B12S1')
+logger = logging.getLogger('G5B12')
 logger.setLevel(helpers.get_log_level())
 ch = logging.StreamHandler()
 ch.setLevel(helpers.get_log_level())
