@@ -61,7 +61,9 @@ def strategy_won_yesterday(strategy_ref=''):
 def strategy_won_last_market(strategy_ref=''):
     """return True if the most recent bet made by the strategy WON
        or if there is no previous bet made by the strategy, False otherwise"""
+    module_logger.info("Getting last settled order for strategy %s" % strategy_ref)
     order = betbot_db.order_repo.get_latest_settled_by_strategy(strategy_ref)
+    module_logger.info(order)
     if order:
         if order['betOutcome'] == 'LOST':
             return False
