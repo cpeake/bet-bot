@@ -54,10 +54,10 @@ class Group5Bet12Strategy(object):
             if not self.state['active']:
                 self.logger.info('Strategy is not active, no bets generated.')
                 return bets
+            self.update_state()
             if self.state['stop']:
                 self.logger.info('Group stop triggered, no more bets in this race grouping.')
                 return bets
-            self.update_state()
             runner = helpers.get_favourite(market_book)
             if runner:
                 stake = self.state['startingStake'] * self.state['stakeLadder'][self.state['groupPosition']]
