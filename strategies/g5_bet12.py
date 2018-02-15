@@ -29,7 +29,7 @@ class Group5Bet12Strategy(object):
                     'strategyRef': self.reference,
                     'name': 'Group 5 Bet 1-2',
                     'groupPosition': -1,
-                    'startingStake': 10,
+                    'startingStake': 100,
                     'stakeLadder': [1, 1, 2, 2, 4],
                     'stop': False,
                     'active': True,
